@@ -5,6 +5,7 @@
 
 #--- TO DO LIST ---
 #Do D4, D8, D10, D12, D20, even if it is not optimized
+#Optimize dice creation
 #Correctly center all numbers one to another and automate the thing
 #Do D3, D16, D24, D30 and D3
 #Do antiprism dices D4..D12
@@ -102,6 +103,30 @@ def booleanOperationOnObject(objDice, objText):
     #Apply the boolean modification
     bpy.context.view_layer.objects.active = bpy.data.objects[objDice]
     bpy.ops.object.modifier_apply(modifier="boolDiff")
+    
+#Replace all dices
+def replaceAllDices():
+    #Change Position of D4
+    bpy.data.objects["D4"].hide_set(False)
+    bpy.data.objects["D4"].location = (0, -75, 0)
+    #Change Position of D6
+    bpy.data.objects["D6"].hide_set(False)
+    bpy.data.objects["D6"].location = (0, -50, 0)
+    #Change Position of D8
+    bpy.data.objects["D8"].hide_set(False)
+    bpy.data.objects["D8"].location = (0, -25, 0)
+    #Change Position of D10
+    bpy.data.objects["D10"].hide_set(False)
+    bpy.data.objects["D10"].location = (0, 0, 0)
+    #Change Position of D10d
+    bpy.data.objects["D10d"].hide_set(False)
+    bpy.data.objects["D10d"].location = (0, 25, 0)
+    #Change Position of D12
+    bpy.data.objects["D12"].hide_set(False)
+    bpy.data.objects["D12"].location = (0, 50, 0)
+    #Change Position of D20
+    bpy.data.objects["D20"].hide_set(False)
+    bpy.data.objects["D20"].location = (0, 75, 0)
     
 #Function: Dice x Triple Rotations
 def diceTripleRotations(dice, rotX, rotY):
@@ -344,15 +369,38 @@ def dice12Generator():
     #Hide the D12
     bpy.data.objects['D12'].hide_set(True)  
     
-#Function: Dice 12 Generator
+#Function: Dice 20 Generator
 def dice20Generator():    
     #Number order
     numOrd = (20, 14, 6, 4, 8, 10, 16, 2, 18, 12, 1, 19, 9, 3, 13, 5, 11, 7, 17, 15)
     #Transformations pre-calculations
-    transformationA = (math.radians(41.81), 0, 0)
-    transformationB = (0, 0, math.radians(60))
-    transformationC = (0, 0, math.radians(120))
-    transformationD = (0, 0, math.radians(-120))
+    transformationX1 = (math.radians(41.81), 0, 0)
+    transformationX2 = (math.radians(-41.81), 0, 0)
+    transformationX3 = (math.radians(180), 0, 0)
+    transformationZ1 = (0, 0, math.radians(60))
+    transformationZ2 = (0, 0, math.radians(120))
+    transformationZ3 = (0, 0, math.radians(-120))
+    #Transformations order
+    rotations = ((transformationZ1, transformationX1),
+        (transformationZ1, transformationX1),
+        (transformationX2, transformationZ3, transformationX1),
+        (transformationX2, transformationZ1, transformationX2, transformationZ2, transformationX1),
+        (transformationZ1, transformationX1),
+        (transformationX2, transformationZ3, transformationX1),
+        (transformationX2, transformationZ1, transformationX2, transformationZ2, transformationX1),
+        (transformationZ1, transformationX1),
+        (transformationX2, transformationZ3, transformationX1),
+        (transformationX2, transformationZ1, transformationX2, transformationZ1, transformationX3),
+        (transformationZ1, transformationX1),
+        (transformationZ1, transformationX1),
+        (transformationX2, transformationZ3, transformationX1),
+        (transformationX2, transformationZ1, transformationX2, transformationZ2, transformationX1),
+        (transformationZ1, transformationX1),
+        (transformationX2, transformationZ3, transformationX1),
+        (transformationX2, transformationZ1, transformationX2, transformationZ2, transformationX1),
+        (transformationZ1, transformationX1),
+        (transformationX2, transformationZ3, transformationX1),
+        (transformationX2, transformationZ1, transformationX2, transformationZ1, transformationX3))
     #Generate Icosahedron
     bpy.ops.mesh.primitive_solid_add(source='20')
     #Rename Dodecahedron
@@ -366,13 +414,20 @@ def dice20Generator():
     #Prepare the dot/underscore sign position
     transformNumber('.', 7, 0, -3.15, 11.125, 0)
     #Rotation & Boolean operation between Dice and Number for all faces
-    for i in range(2):
+    for i in range(20):
         #Modify Number Position
         transformNumber(str(numOrd[i]), 7, 0, 0, 11.125, 0)
         #Apply boolean operation on dice
         booleanOperationOnObject('D20', _numName + str(numOrd[i]))
+        #If there is a 6 or a 9 face, apply the dot/underscore on the bottom
+        if((numOrd[i] == 6) or (numOrd[i] == 9)):
+            booleanOperationOnObject('D20', _numName + '.')
         #Sequence the rotations and boolean for half a dice
-        
+        for sequence in rotations[i]:
+            bpy.data.objects['D20'].rotation_euler = sequence
+            bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    #Hide the D20
+    bpy.data.objects['D20'].hide_set(True)  
     
 #Main function    
 def main():
@@ -390,6 +445,8 @@ def main():
     clearAllNumbers()
     #Clean the font used
     bpy.data.fonts.remove(_fontOpen)
+    #Replace all dices of a better view
+    replaceAllDices()
     
 if __name__ == "__main__":
     main()
