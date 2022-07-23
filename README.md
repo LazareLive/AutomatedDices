@@ -5,7 +5,6 @@ Based on "Design Your Own Custom Dice for Free | Blender Tutorial | DIY with Cly
 https://www.youtube.com/watch?v=nCowrvfOr3Q<br/>
 
 -- TO DO LIST --<br/>
-#Finish the D20<br/>
 #Correctly center all numbers one to another and automate the thing<br/>
 #D16, D24, D30 and D3<br/>
 #Antiprism dices D4..D12<br/>
@@ -15,4 +14,3 @@ https://www.youtube.com/watch?v=nCowrvfOr3Q<br/>
 #D5, D7 and D9 dices<br/>
 #D2 and D4 rounded cube dices<br/>
 #Altered meshes such as rounded, beveled, etc.<br/>
-#Optimise code for objects, and dice naming<br/>
