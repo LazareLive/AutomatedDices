@@ -4,8 +4,6 @@
 #https://www.youtube.com/watch?v=nCowrvfOr3Q
 
 #--- TO DO LIST ---
-#Do D4, D8, D10, D12, D20, even if it is not optimized
-#Optimize dice creation
 #Correctly center all numbers one to another and automate the thing
 #Do D3, D16, D24, D30 and D3
 #Do antiprism dices D4..D12
@@ -30,6 +28,8 @@ _fontOpen = bpy.data.fonts.load(_fontFile)
 _numName = '_Num'
 _numbers = ('.', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15',
     '16', '17', '18', '19', '20', '30', '40', '50', '60', '70', '80', '90', '00')
+_dotYPosition = -0.45
+_diceList = []
 
 #Function: Number Creator
 def numberCreator(stringText):
@@ -74,6 +74,7 @@ def clearAllNumbers():
     for x in _numbers:
         bpy.data.meshes.remove(bpy.data.objects[_numName + x].data)
 
+#Function: Modify the Number Mesh into a new position
 def transformNumber(number, scale, locX, locY, locZ, rotate):
     #Get the number mesh name
     meshName = _numName + number
@@ -84,13 +85,14 @@ def transformNumber(number, scale, locX, locY, locZ, rotate):
     #Change Z Rotation
     bpy.data.objects[meshName].rotation_euler = (0, 0, math.radians(rotate))
     
+#Function: Initialize the scale, position and rotation of a dice
 def solidInitializePosition(dice, scale):
-    #Center and modify dice
-    bpy.data.objects[dice].scale = (scale, scale, scale)
-    #Change Position
-    bpy.data.objects[dice].location = (0, 0, 0)
-    #Change Z Rotation
+    #Reset the rotations
     bpy.data.objects[dice].rotation_euler = (0, 0, 0)
+    #Change Position back to 0, 0, 0
+    bpy.data.objects[dice].location = (0, 0, 0)
+    #Scale the dice
+    bpy.data.objects[dice].scale = (scale, scale, scale)
     #Apply transformations
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     
@@ -106,44 +108,17 @@ def booleanOperationOnObject(objDice, objText):
     
 #Replace all dices
 def replaceAllDices():
-    #Change Position of D4
-    bpy.data.objects["D4"].hide_set(False)
-    bpy.data.objects["D4"].location = (0, -75, 0)
-    #Change Position of D6
-    bpy.data.objects["D6"].hide_set(False)
-    bpy.data.objects["D6"].location = (0, -50, 0)
-    #Change Position of D8
-    bpy.data.objects["D8"].hide_set(False)
-    bpy.data.objects["D8"].location = (0, -25, 0)
-    #Change Position of D10
-    bpy.data.objects["D10"].hide_set(False)
-    bpy.data.objects["D10"].location = (0, 0, 0)
-    #Change Position of D10d
-    bpy.data.objects["D10d"].hide_set(False)
-    bpy.data.objects["D10d"].location = (0, 25, 0)
-    #Change Position of D12
-    bpy.data.objects["D12"].hide_set(False)
-    bpy.data.objects["D12"].location = (0, 50, 0)
-    #Change Position of D20
-    bpy.data.objects["D20"].hide_set(False)
-    bpy.data.objects["D20"].location = (0, 75, 0)
-    
-#Function: Dice x Triple Rotations
-def diceTripleRotations(dice, rotX, rotY):
-    #Prepare the inverse rotation
-    invRot = rotX * (-1)
-    #Do the invert rotation on X
-    bpy.data.objects[dice].rotation_euler = (math.radians(invRot), 0, 0)
-    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
-    #Do the Y rotation
-    bpy.data.objects[dice].rotation_euler = (0, math.radians(rotY), 0)
-    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
-    #Redo the X rotation
-    bpy.data.objects[dice].rotation_euler = (math.radians(rotX), 0, 0)
-    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    #Create a counter for the position offset
+    position = ((len(_diceList) - 1) * -25) / 2
+    #For each dice created
+    for dice in _diceList:
+        #Change Position of D4
+        bpy.data.objects[dice].hide_set(False)
+        bpy.data.objects[dice].location = (0, position, 0)
+        position = position + 25
     
 #Function: Generate a two-coned dice with any number of faces
-def generateConedDice(diceName, vert, rad, dep):
+def generateBipyramidalSolid(diceName, vert, rad, dep):
     #Generate the first cone and rename it
     bpy.ops.mesh.primitive_cone_add(vertices=vert, radius1=rad, radius2=0, depth=dep, enter_editmode=False, align='WORLD', location=(0, 0, 0), rotation=(0, 0, 0), scale=(1, 1, 1))
     bpy.data.objects['Cone'].name = diceName
@@ -165,215 +140,268 @@ def generateConedDice(diceName, vert, rad, dep):
     bpy.data.meshes.remove(bpy.data.objects["Cone"].data)
     #Select the Bipyramidal dice
     bpy.data.objects[diceName].select_set(True)
-    
-#Function: Dice 4 Generator
+
+#Function: Fully rename de mesh and the linked object
+#oldName : the name of the solid when created
+#newName : the new name applied to the solid
+def renameSolid(oldName, newName):
+    bpy.data.objects[oldName].data.name = newName
+    bpy.data.objects[oldName].name = newName
+
+#Function: Apply faces to the dice using a set of rotations
+#diceName : name of the dice object in blender
+#rotationSequence : sequence of the dice to apply all the numbers
+#numberOrder : number sequence to be applied to the dice
+def diceAlgorithm(diceName, rotationSequence, numberOrder, textPosX, textPosY, textPosZ, textScale, textRotation, isPercentile=False):
+    #Get the dice size using numberOrder
+    faces = len(numberOrder)
+    #In case of a dice with more than 8 faces, apply the dotted 6 and 9 for disambiguition
+    if(faces > 8):
+        #Prepare the dot/underscore sign position
+        transformNumber('.', textScale, textPosX, textPosY + (_dotYPosition * textScale), textPosZ, textRotation)
+    #Rotation & Boolean operation between Dice and Number for all faces
+    for i in range(faces):
+        #Create the number object name
+        numberOjectName = str(numberOrder[i])
+        #If it is a percentile dice, add a 0 to the name
+        if(isPercentile):
+            numberOjectName = numberOjectName + '0'
+        #Modify Number Position
+        transformNumber(numberOjectName, textScale, textPosX, textPosY, textPosZ, textRotation)
+        #Apply boolean operation on dice
+        booleanOperationOnObject(diceName, _numName + numberOjectName)
+        #If there is a 6 or a 9 face, apply the dot/underscore on the bottom
+        if((faces > 8) and (isPercentile == False) and ((numberOrder[i] == 6) or (numberOrder[i] == 9))):
+            booleanOperationOnObject(diceName, _numName + '.')
+        #Sequence the rotations and boolean for half a dice
+        for sequence in rotationSequence[(i % len(rotationSequence))]:
+            bpy.data.objects[diceName].rotation_euler = sequence
+            bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+            
+#Function: Tetrahedron Dice 4 Generator
 def dice4Generator():
+    #Dice Name
+    diceName = 'D4'
     #Number order
-    numOrd = (4, 3, 2, 1)
+    numOrd = (4, 4, 4, 3, 3, 3, 2, 2, 2, 1, 1, 1)
     #Transformations pre-calculations
-    transformationA = (0, 0, math.radians(120))
-    transformationB = (0, 0, math.radians(-120))
+    transformationX1 = (math.radians(-19.47), 0, 0)
+    transformationX2 = (math.radians(19.47), 0, 0)
+    transformationX3 = (math.radians(70.53), 0, 0)
+    transformationY1 = (0, math.radians(120), 0)
+    transformationZ1 = (0, 0, math.radians(120))
+    transformationZ2 = (0, 0, math.radians(-120))
     #Transformations order
-    rotations = (transformationA, transformationB, transformationB, (0, 0, 0))
+    rotations = (
+        (transformationX1, transformationY1, transformationX2),
+        (transformationX1, transformationY1, transformationX2),
+        (transformationZ1,),
+        (transformationX1, transformationY1, transformationX2),
+        (transformationX1, transformationY1, transformationX2),
+        (transformationZ2,),
+        (transformationX1, transformationY1, transformationX2),
+        (transformationX1, transformationY1, transformationX2),
+        (transformationX1, transformationY1, transformationX2, transformationZ2),
+        (transformationX1, transformationY1, transformationX2),
+        (transformationX1, transformationY1, transformationX2),
+        (transformationX3,)
+        )
     #Generate Tetrahedron
     bpy.ops.mesh.primitive_solid_add(source='4')
     #Rename Tetrahedron
-    bpy.data.objects['Solid'].name = "D4"
-    bpy.data.objects['D4'].data.name = "D4"
+    renameSolid('Solid', diceName)
     #Center and position dice
-    solidInitializePosition("D4", 15)
+    solidInitializePosition(diceName, 15)
     #Initial rotation
-    bpy.data.objects['D4'].rotation_euler = (0, 0, math.radians(-30))
+    bpy.data.objects[diceName].rotation_euler = (0, 0, math.radians(-30))
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
-    bpy.data.objects['D4'].rotation_euler = (0, math.radians(180), 0)
+    bpy.data.objects[diceName].rotation_euler = (0, math.radians(180), 0)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
-    #Create Rotations & Boolean operations
-    for i in range(4):
-        #Modify number position
-        transformNumber(str(numOrd[i]), 10, 0, 6.5, 5, 0)
-        for j in range(3):
-            #Boolean modifier for 1st number
-            booleanOperationOnObject('D4', _numName + str(numOrd[i]))
-            #Serie of various rotations only for the first and second rotatons
-            if (j < 2):
-                diceTripleRotations('D4', 19.47, 120)
-        #Apply new rotations to dice
-        if (numOrd[i] == 2):
-            diceTripleRotations('D4', 19.47, 120)
-        bpy.data.objects['D4'].rotation_euler = rotations[i]
-        bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
-    #Apply last rotation for 1-face upward
-    bpy.data.objects['D4'].rotation_euler = (math.radians(70.53), 0, 0)
-    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    #Apply the rotation algorithm
+    diceAlgorithm(diceName, rotations, numOrd, 0, 6.5, 5, 10, 0)
+    #Add the created dice to the list
+    _diceList.append(diceName)
     #Hide the D4
-    bpy.data.objects['D4'].hide_set(True)        
-        
-#Function: Dice 6 Generator
+    bpy.data.objects[diceName].hide_set(True)             
+
+#Function: Cube Dice 6 Generator
 def dice6Generator():
+    #Dice Name
+    diceName = 'D6'
     #Number order
     numOrd = (6, 2, 4, 3, 1, 5)
     #Transformations pre-calculations
     transformationA = (0, math.radians(-90), math.radians(90))
     transformationB = (math.radians(180), 0, 0)
     transformationC = (0, math.radians(90), math.radians(-90))
+    transformationD = (math.radians(90), math.radians(180), math.radians(-90))
     #Transformations order
-    rotations = ((0, 0, 0), transformationA, transformationA, transformationB, transformationC, transformationC)
+    rotations = (
+        (transformationA,),
+        (transformationA,),
+        (transformationB,),
+        (transformationC,),
+        (transformationC,),
+        (transformationD,)
+    )
     #Cube generation
     bpy.ops.mesh.primitive_cube_add(location=(0.0, 0.0, 0.0), rotation=(0.0, 0.0, 0.0), scale=(8, 8, 8))
     #Modify Cube name to D6
-    bpy.data.objects['Cube'].name = "D6"
-    bpy.data.objects['D6'].data.name = "D6"
-    #Rotation & Boolean operation between Dice and Number for all faces
-    for i in range(6):
-        #Modify Number Position
-        transformNumber(str(numOrd[i]), 16, 0, 0, 8, 0)
-        #Apply rotations to dice
-        bpy.data.objects['D6'].rotation_euler = rotations[i]
-        bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
-        #Apply boolean operation on dice
-        booleanOperationOnObject('D6', _numName + str(numOrd[i]))
-    #Apply last rotation for 6-face upward
-    bpy.data.objects['D6'].rotation_euler = (math.radians(90), 0, 0)
-    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    renameSolid('Cube', diceName)
+    #Apply the rotation algorithm
+    diceAlgorithm(diceName, rotations, numOrd, 0, 0, 8, 16, 0)
+    #Add the created dice to the list
+    _diceList.append(diceName)
     #Hide the D6
-    bpy.data.objects['D6'].hide_set(True)
-    
-#Function: Dice 8 Generator
+    bpy.data.objects[diceName].hide_set(True)
+            
+#Function: Octahedron Dice 8 Generator
 def dice8Generator():
+    #Dice Name
+    diceName = 'D8'    
     #Number order
     numOrd = (8, 2, 6, 4, 5, 3, 7, 1)
+    #Transformations pre-calculations
+    transformationX1 = (math.radians(-35.265), 0, 0)
+    transformationX2 = (math.radians(35.265), 0, 0)
+    transformationX3 = (math.radians(180), 0, 0)
+    transformationY1 = (0, math.radians(-90), 0)
+    #Transformations order
+    rotations = (
+        (transformationX1, transformationY1, transformationX2), 
+        (transformationX1, transformationY1, transformationX2), 
+        (transformationX1, transformationY1, transformationX2),  
+        (transformationX3,) 
+        )
     #Generate Tetrahedron
     bpy.ops.mesh.primitive_solid_add(source='8')
-    #Rename Tetrahedron
-    bpy.data.objects['Solid'].name = "D8"
-    bpy.data.objects['D8'].data.name = "D8"
+    #Rename Octahedron
+    renameSolid('Solid', diceName)
     #Before any resize, rotate the dice
-    bpy.data.objects['D8'].rotation_euler = (0, math.radians(45), 0)
+    bpy.data.objects[diceName].rotation_euler = (0, math.radians(45), 0)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
-    bpy.data.objects['D8'].rotation_euler = (math.radians(35.265), 0, 0)
+    bpy.data.objects[diceName].rotation_euler = (math.radians(35.265), 0, 0)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
     #Center and position dice
-    solidInitializePosition("D8", 15)
-    #Rotation & Boolean operation between Dice and Number for all faces
-    for i in range(8):
-        #Modify Number Position
-        transformNumber(str(numOrd[i]), 13, 0, 1, 8.66, 0)
-        #Apply boolean operation on dice
-        booleanOperationOnObject('D8', _numName + str(numOrd[i]))
-        #Rotate the dice
-        if((i % 4) == 3):
-            bpy.data.objects['D8'].rotation_euler = (math.radians(180), 0, 0)
-            bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
-        else:
-            diceTripleRotations('D8', 35.265, -90)
+    solidInitializePosition(diceName, 15)
+    #Apply the rotation algorithm
+    diceAlgorithm(diceName, rotations, numOrd, 0, 1, 8.66, 13, 0)
+    #Add the created dice to the list
+    _diceList.append(diceName)
     #Hide the D8
-    bpy.data.objects['D8'].hide_set(True)            
+    bpy.data.objects[diceName].hide_set(True)          
             
-#Function: Dice 10 Generator
+#Function: Bipyramidal Dice 10 Generator
 def dice10UnitGenerator():
+    #Dice Name
+    diceName = 'D10u'
     #Number order
     numOrd = (6, 4, 8, 2, 0, 1, 9, 3, 7, 5)
+    #Transformations pre-calculations
+    transformationX1 = (math.radians(-35.7), 0, 0)
+    transformationX2 = (math.radians(35.7), 0, 0)
+    transformationX3 = (math.radians(180), 0, 0)
+    transformationY1 = (0, math.radians(72), 0)
+    #Transformations order
+    rotations = (
+        (transformationX1, transformationY1, transformationX2), 
+        (transformationX1, transformationY1, transformationX2), 
+        (transformationX1, transformationY1, transformationX2),
+        (transformationX1, transformationY1, transformationX2),  
+        (transformationX3,) 
+        )
     #Generate the D10 solid base
-    generateConedDice("D10", 5, 2, 2.25)
+    generateBipyramidalSolid(diceName, 5, 2, 2.25)
     #Rotate the dice for a better scaling
-    bpy.data.objects['D10'].rotation_euler = (math.radians(-54.3), 0, 0)
+    bpy.data.objects[diceName].rotation_euler = (math.radians(-54.3), 0, 0)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
     #Initialize position, rotation and scale
-    solidInitializePosition("D10", 13)
-    #Prepare the dot/underscore sign position
-    transformNumber('.', 12, 0, -5.4, 8.55, 0)
-    #Rotation & Boolean operation between Dice and Number for all faces
-    for i in range(10):
-        #Modify Number Position
-        transformNumber(str(numOrd[i]), 12, 0, 0, 8.55, 0)
-        #Apply boolean operation on dice
-        booleanOperationOnObject('D10', _numName + str(numOrd[i]))
-        #If there is a 6 or a 9 face, apply the dot/underscore on the bottom
-        if((numOrd[i] == 6) or (numOrd[i] == 9)):
-            booleanOperationOnObject('D10', _numName + '.')
-        #Rotate the dice
-        if((i % 5) == 4):
-            bpy.data.objects['D10'].rotation_euler = (math.radians(180), 0, 0)
-            bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
-        else:
-            diceTripleRotations('D10', 35.7, -72)
+    solidInitializePosition(diceName, 13)
+    #Apply the rotation algorithm
+    diceAlgorithm(diceName, rotations, numOrd, 0, 0, 8.55, 12, 0)
+    #Add the created dice to the list
+    _diceList.append(diceName)
     #Hide the D10
-    bpy.data.objects['D10'].hide_set(True)  
+    bpy.data.objects[diceName].hide_set(True)  
     
-#Function: Dice 10 Generator
+#Function: Bipyramidal Dice 10 Generator
 def dice10DecimalGenerator():
-    #Number order --There is a problem with 00. I have to do this trick for now...
-    numOrd = ('60', '40', '80', '20', '00', '10', '90', '30', '70', '50')
+    #Dice Name
+    diceName = 'D10d'
+    #Number order
+    numOrd = (6, 4, 8, 2, 0, 1, 9, 3, 7, 5)
+    #Transformations pre-calculations
+    transformationX1 = (math.radians(-35.7), 0, 0)
+    transformationX2 = (math.radians(35.7), 0, 0)
+    transformationX3 = (math.radians(180), 0, 0)
+    transformationY1 = (0, math.radians(72), 0)
+    #Transformations order
+    rotations = (
+        (transformationX1, transformationY1, transformationX2), 
+        (transformationX1, transformationY1, transformationX2), 
+        (transformationX1, transformationY1, transformationX2),
+        (transformationX1, transformationY1, transformationX2),  
+        (transformationX3,) 
+        )
     #Generate the D10 solid base
-    generateConedDice("D10d", 5, 2, 2.25)
+    generateBipyramidalSolid(diceName, 5, 2, 2.25)
     #Rotate the dice for a better scaling
-    bpy.data.objects['D10d'].rotation_euler = (math.radians(-54.3), 0, 0)
+    bpy.data.objects[diceName].rotation_euler = (math.radians(-54.3), 0, 0)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
     #Initialize position, rotation and scale
-    solidInitializePosition("D10d", 13)
-    #Rotation & Boolean operation between Dice and Number for all faces
-    for i in range(10):
-        #Modify Number Position
-        transformNumber(str(numOrd[i]), 9, 0, -1.55, 8.55, 90)
-        #Apply boolean operation on dice
-        booleanOperationOnObject('D10d', _numName + numOrd[i])
-        #Rotate the dice
-        if((i % 5) == 4):
-            bpy.data.objects['D10d'].rotation_euler = (math.radians(180), 0, 0)
-            bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
-        else:
-            diceTripleRotations('D10d', 35.7, -72)
+    solidInitializePosition(diceName, 13)
+    #Apply the rotation algorithm
+    diceAlgorithm(diceName, rotations, numOrd, 0, -1.55, 8.55, 9, 90, True)
+    #Add the created dice to the list
+    _diceList.append(diceName)
     #Hide the D10
-    bpy.data.objects['D10d'].hide_set(True)      
-    
-#Function: Dice 12 Generator
+    bpy.data.objects[diceName].hide_set(True)         
+                    
+#Function: Dodecahedron Dice 12 Generator
 def dice12Generator():
+    #Dice Name
+    diceName = 'D12'
     #Number order
     numOrd = (12, 8, 6, 4, 2, 10, 1, 3, 11, 9, 7, 5)
     #Transformations pre-calculations
-    transformationA = (0, 0, math.radians(36))
-    transformationB = (0, 0, math.radians(72))
+    transformationX1 = (math.radians(63.43), 0, 0)
+    transformationX2 = (math.radians(-63.43), 0, 0)
+    transformationX3 = (math.radians(180), 0, 0)
+    transformationZ1 = (0, 0, math.radians(36))
+    transformationZ2 = (0, 0, math.radians(72))
     #Transformations order
-    rotations = (transformationA, transformationB, transformationB, transformationB, transformationB, transformationA)
+    rotations = (
+        (transformationZ1, transformationX1), 
+        (transformationX2, transformationZ2, transformationX1), 
+        (transformationX2, transformationZ2, transformationX1), 
+        (transformationX2, transformationZ2, transformationX1), 
+        (transformationX2, transformationZ2, transformationX1), 
+        (transformationX2, transformationZ1, transformationX3)
+        )
     #Generate Dodecahedron
     bpy.ops.mesh.primitive_solid_add(source='12')
     #Rename Dodecahedron
-    bpy.data.objects['Solid'].name = "D12"
-    bpy.data.objects['D12'].data.name = "D12"
+    renameSolid('Solid', diceName)
     #Rotate the dice for a better scaling
-    bpy.data.objects['D12'].rotation_euler = (math.radians(-58.285), 0, 0)
+    bpy.data.objects[diceName].rotation_euler = (math.radians(-58.285), 0, 0)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
     #Initialize position, rotation and scale
-    solidInitializePosition("D12", 12)
-    #Prepare the dot/underscore sign position
-    transformNumber('.', 10, 0, -4.5, 9.54, 0)
-    #Rotation & Boolean operation between Dice and Number for all faces
-    for i in range(12):
-        #Do a rotation if the numbers are not 12 & 1
-        if ((i % 6) > 0):
-            bpy.data.objects['D12'].rotation_euler = (math.radians(63.43), 0, 0)
-        #Modify Number Position
-        transformNumber(str(numOrd[i]), 10, 0, 0, 9.54, 0)
-        #Apply boolean operation on dice
-        booleanOperationOnObject('D12', _numName + str(numOrd[i]))
-        #If there is a 6 or a 9 face, apply the dot/underscore on the bottom
-        if((numOrd[i] == 6) or (numOrd[i] == 9)):
-            booleanOperationOnObject('D12', _numName + '.')
-        #Rotate the dice around 12 & 1
-        bpy.data.objects['D12'].rotation_euler = rotations[(i % 6)]
-        bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
-        #After finalizing half of the dice operations, rotate it.
-        if((i % 6) == 5):
-            bpy.data.objects['D12'].rotation_euler = (math.radians(180), 0, 0)
-            bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    solidInitializePosition(diceName, 12)
+    #Apply the rotation algorithm
+    diceAlgorithm(diceName, rotations, numOrd, 0, 0, 9.54, 10, 0)
+    #Add the created dice to the list
+    _diceList.append(diceName)
     #Hide the D12
-    bpy.data.objects['D12'].hide_set(True)  
+    bpy.data.objects[diceName].hide_set(True)          
     
-#Function: Dice 20 Generator
+#Function: Icosahedron Dice 20 Generator
 def dice20Generator():    
+    #Dice Name
+    diceName = 'D20'
     #Number order
     numOrd = (20, 14, 6, 4, 8, 10, 16, 2, 18, 12, 1, 19, 9, 3, 13, 5, 11, 7, 17, 15)
     #Transformations pre-calculations
+    transformationInit = (math.radians(20.905), 0, 0)
     transformationX1 = (math.radians(41.81), 0, 0)
     transformationX2 = (math.radians(-41.81), 0, 0)
     transformationX3 = (math.radians(180), 0, 0)
@@ -381,16 +409,7 @@ def dice20Generator():
     transformationZ2 = (0, 0, math.radians(120))
     transformationZ3 = (0, 0, math.radians(-120))
     #Transformations order
-    rotations = ((transformationZ1, transformationX1),
-        (transformationZ1, transformationX1),
-        (transformationX2, transformationZ3, transformationX1),
-        (transformationX2, transformationZ1, transformationX2, transformationZ2, transformationX1),
-        (transformationZ1, transformationX1),
-        (transformationX2, transformationZ3, transformationX1),
-        (transformationX2, transformationZ1, transformationX2, transformationZ2, transformationX1),
-        (transformationZ1, transformationX1),
-        (transformationX2, transformationZ3, transformationX1),
-        (transformationX2, transformationZ1, transformationX2, transformationZ1, transformationX3),
+    rotations = (
         (transformationZ1, transformationX1),
         (transformationZ1, transformationX1),
         (transformationX2, transformationZ3, transformationX1),
@@ -400,42 +419,31 @@ def dice20Generator():
         (transformationX2, transformationZ1, transformationX2, transformationZ2, transformationX1),
         (transformationZ1, transformationX1),
         (transformationX2, transformationZ3, transformationX1),
-        (transformationX2, transformationZ1, transformationX2, transformationZ1, transformationX3))
+        (transformationX2, transformationZ1, transformationX2, transformationZ1, transformationX3)
+        )
     #Generate Icosahedron
     bpy.ops.mesh.primitive_solid_add(source='20')
     #Rename Dodecahedron
-    bpy.data.objects['Solid'].name = "D20"
-    bpy.data.objects['D20'].data.name = "D20"
+    renameSolid('Solid', diceName)
     #Rotate the dice for a better scaling
-    bpy.data.objects['D20'].rotation_euler = (math.radians(20.905), 0, 0)
+    bpy.data.objects[diceName].rotation_euler = (math.radians(20.905), 0, 0)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
     #Initialize position, rotation and scale
-    solidInitializePosition("D20", 14)
-    #Prepare the dot/underscore sign position
-    transformNumber('.', 7, 0, -3.15, 11.125, 0)
-    #Rotation & Boolean operation between Dice and Number for all faces
-    for i in range(20):
-        #Modify Number Position
-        transformNumber(str(numOrd[i]), 7, 0, 0, 11.125, 0)
-        #Apply boolean operation on dice
-        booleanOperationOnObject('D20', _numName + str(numOrd[i]))
-        #If there is a 6 or a 9 face, apply the dot/underscore on the bottom
-        if((numOrd[i] == 6) or (numOrd[i] == 9)):
-            booleanOperationOnObject('D20', _numName + '.')
-        #Sequence the rotations and boolean for half a dice
-        for sequence in rotations[i]:
-            bpy.data.objects['D20'].rotation_euler = sequence
-            bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    solidInitializePosition(diceName, 14)
+    #Apply the rotation algorithm
+    diceAlgorithm(diceName, rotations, numOrd, 0, 0, 11.125, 7, 0)
+    #Add the created dice to the list
+    _diceList.append(diceName)
     #Hide the D20
-    bpy.data.objects['D20'].hide_set(True)  
+    bpy.data.objects[diceName].hide_set(True)  
     
 #Main function    
 def main():
     #Generate all numbers
     generateAllNumbers()
-    #6-sided dice generator
-    dice6Generator()
+    #Dice Generation Sequence
     dice4Generator()
+    dice6Generator()
     dice8Generator()
     dice10UnitGenerator()
     dice10DecimalGenerator()
