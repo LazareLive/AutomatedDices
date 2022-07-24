@@ -6,11 +6,11 @@ https://www.youtube.com/watch?v=nCowrvfOr3Q<br/>
 
 -- TO DO LIST --<br/>
 #Correctly center all numbers one to another and automate the thing<br/>
-#D16, D24, D30 and D3<br/>
+#D16, D24, D30<br/>
 #Antiprism dices D4..D12<br/>
 #Rhombic dices D6 and D12<br/>
 #Bipyramid dices (D5, D7 and D9 possible with double number)<br/>
 #Other shapes for D24, D48, D64... and more ?<br/>
-#D5, D7 and D9 dices<br/>
+#D7 and D9 dices<br/>
 #D2 and D4 rounded cube dices<br/>
 #Altered meshes such as rounded, beveled, etc.<br/>
