@@ -5,13 +5,13 @@ Based on "Design Your Own Custom Dice for Free | Blender Tutorial | DIY with Cly
 https://www.youtube.com/watch?v=nCowrvfOr3Q<br/>
 
 -- FUNCTIONS DONE --<br/>
-#Traditionnal Platonician dices : D4, D6, D8, D10, D10%, D12 and D20
-#Prismatic dices : D3, D4, D5, D6, D7, D8 and D10
-#Antiprismatic dices : D6
+#Traditionnal Platonician dices : D4, D6, D8, D10, D10%, D12 and D20<br/>
+#Prismatic dices : D3, D4, D5, D6, D7, D8 and D10<br/>
+#Antiprismatic dices : D6<br/>
 
 -- TO DO LIST --<br/>
-#Dice sizing, and shapes parametrable
-#Text depth and size parametrable
+#Dice sizing, and shapes parametrable<br/>
+#Text depth and size parametrable<br/>
 #Correctly center all numbers one to another and automate the thing<br/>
 #D16, D24, D30<br/>
 #Antiprism dices D8..D12<br/>
