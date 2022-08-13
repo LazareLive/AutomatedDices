@@ -854,7 +854,21 @@ def diceAntirismaticGenerator(faces, radius, depth, extrude, scale, textSize):
             poly = polyg
             break
     #Get the Y-text position
-    textY = abs(bpy.data.objects[diceName].data.vertices[poly.vertices[0]].co.y) / (-2)
+    upperY = 0
+    lowerY = 0
+    #From the upper polygon, get the vertices position
+    for v in poly.vertices:
+        vertex = bpy.data.objects[diceName].data.vertices[v]
+        #Get the uppest and lowest values of the polygon on Y
+        upperY = max(upperY, vertex.co.y)
+        lowerY = min(lowerY, vertex.co.y)   
+    #The antiprism seems to have a construction problem, should deal with absolutes (like the Devil)
+    upperY = abs(upperY)
+    lowerY = abs(lowerY)
+    #The minimal value of Y always points toward the triangle base of the polygon
+    minimalY = min(upperY, lowerY)
+    #Calculate the text Y position on the solid
+    textY = ((1/4) * (upperY + lowerY)) - minimalY
     #Get the Z-text position
     textZ = abs(bpy.data.objects[diceName].data.vertices[poly.vertices[0]].co.z)
     #Generate automatic rotations
@@ -925,7 +939,7 @@ def diceBipyramidGenerator(faces, radius, depth, scale, textSize):
         vertex = bpy.data.objects[diceName].data.vertices[v]
         upperY = max(upperY, vertex.co.y)
         lowerY = min(lowerY, vertex.co.y)
-    textYDivider = 1 + math.ceil(faces / 6)
+    textYDivider = math.ceil(math.sqrt(polygonOrder + 1))
     textY = lowerY + ((1/textYDivider) * (upperY - lowerY))
     #Set rotation if n faces > 12
     textRotation = 0
@@ -945,7 +959,7 @@ def diceBipyramidGenerator(faces, radius, depth, scale, textSize):
 #####################
     
 #Main function
-def main():    
+def main():
     #Generate all numbers
     generateAllNumbers()
     #Dice Generation Sequence
@@ -967,19 +981,22 @@ def main():
     diceOddPrismaticGenerator(7, 1.5, 1.5, 1.25, 8, 6)
     diceOddPrismaticGenerator(9, 2.5, 2.5, 1.5, 8, 6)
     #Antiprism dices
-    diceAntirismaticGenerator(6, 0.75, 2, 0.75, 10, 10)
-    diceAntirismaticGenerator(8, 0.75, 2, 0.75, 9, 9)
-    diceAntirismaticGenerator(10, 1, 2, 0.75, 9, 8) 
-    diceAntirismaticGenerator(12, 1, 2, 0.5, 9, 7)
+    diceAntirismaticGenerator(6, 0.9, 2.25, 0.75, 9, 9)
+    diceAntirismaticGenerator(8, 0.9, 2.25, 0.75, 9, 9)
+    diceAntirismaticGenerator(10, 1, 2.25, 0.75, 9, 8) 
+    diceAntirismaticGenerator(12, 1, 2.25, 0.5, 9, 7)
     diceAntirismaticGenerator(14, 1.25, 2.5, 0.5, 9, 7) 
-    #Bipyramidal dices
+    diceAntirismaticGenerator(16, 1.25, 2.5, 0.5, 9, 7) 
+    diceAntirismaticGenerator(18, 1.33, 2.75, 0.5, 9, 7) 
+    diceAntirismaticGenerator(20, 1.5, 3, 0.5, 9, 7) 
+    #Bipyramidal dices --D8 and 10 not generated : looks a lot like Platonic
     diceBipyramidGenerator(6, 2, 2.25, 10, 8)
-    diceBipyramidGenerator(8, 2, 2.25, 10, 8)
-    diceBipyramidGenerator(10, 2.25, 2.25, 10, 8)
     diceBipyramidGenerator(12, 2.25, 2.25, 10, 6)
     diceBipyramidGenerator(14, 2.5, 2.25, 10, 6)
     diceBipyramidGenerator(16, 2.5, 2.5, 10, 6)
-
+    diceBipyramidGenerator(18, 2.75, 2.5, 10, 6)
+    diceBipyramidGenerator(20, 2.75, 2.5, 10, 6)
+ 
     #Delete all numbers
     clearAllNumbers()
     #Replace all dices of a better view
