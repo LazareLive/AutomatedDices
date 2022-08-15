@@ -4,30 +4,27 @@
 #https://www.youtube.com/watch?v=nCowrvfOr3Q
 
 #--- DONE ---
-#Create classic dices D4, D6, D8, D10, D%, D12 and D20
-#Create prism and antiprism n-sided dices
-#Modify dice font
-#For all non-Platonician dices, generate the number sequence automatically
-#Change the function method to authorize sizing parameters on non-Platonician dices
-#Do bipyramid dices
+#Classic dices D4, D6, D8, D10, D%, D12 and D20
+#Prism, Antiprism and Bipyramid n-sided dice
+#Dice scale can be chosen on classic dices
+#Dice size and extrusions can be parametered on prism, antiprism and bipyramidal dice
+#Text is centered, whatever the used font
+#Text size and imprint are parametered
+#Number sequence is automatically generated on n-sided dice
+#Mesh alteration is global for all asked dice to be generated
 
 #--- TO DO LIST ---
-#Correctly center all numbers one to another and automate the thing
-#Ability to modify the font imprint
-#Change the function method to authorize sizing parameters on platonician dices
-#Do D16, D24, D30
+#Do D24, D30 dice
 #Do rhombic dices
 #Do other D24, D48, D60, D120 ... and more ?
 #Do D5 and D7 dices
 #Do D2 and D4 rounded cube dices
 #Do extruded pyramid dices (half-bipyramid, name does not makes sense...)
 #Do bipyramidal n-sided dices with twice the number order
-#Create altered meshes such as rounded, beveled, etc.
-#Optimise code for objects, and dice naming
 
 #Import Blender librairies
-import bpy
-#Import additionnal libraries
+import bpy, mathutils
+#Import additionnal math librarie
 import math
 
 #Global variables
@@ -36,74 +33,89 @@ _fontFile = "C:\\Windows\\Fonts\\CantaraGotica.ttf"
 #Internal global variables
 _fontOpen = bpy.data.fonts.load(_fontFile)
 _numName = '_Num'
-_numbers = ('.', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15',
-    '16', '17', '18', '19', '20', '30', '40', '50', '60', '70', '80', '90', '00')
-_dotYPosition = -0.15
+_numbers = ['.', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15',
+    '16', '17', '18', '19', '20', '30', '40', '50', '60', '70', '80', '90', '00']
+_dotYPosition = -0.25
 _diceList = []
+
+#Global bevel modification parameters
+_bevelMethodActivation = False
+_bevelAmountPercentage = 0
+_bevelSegments = 5
+_bevelMethodIsVertice = True
 
 ######################################
 ### TEXT/NUMBERS-RELATED FUNCTIONS ###
 ######################################
 
 #Function: Number Creator
-def numberCreator(stringText):
+def numberMeshCreator(stringText, locY=None):
     #Create Text Object
     bpy.ops.object.text_add(align='WORLD', location=(0.0, 0.0, 0.0), rotation=(0.0, 0.0, 0.0), scale=(0.0, 0.0, 0.0))
     #Modify text alignments
     bpy.context.object.data.align_x = 'CENTER'
-    bpy.context.object.data.align_y = 'CENTER'
     #Modify Text Object Name
     meshName = _numName + stringText
     bpy.data.objects['Text'].name = meshName
     #Get curve name for later deletion
     curve = bpy.data.objects[meshName].data
-    #Assign Font To Object
+    #Assign font To object
     bpy.data.objects[meshName].data.font = _fontOpen
-    #Change Text
+    #Change text
     bpy.data.objects[meshName].data.body = stringText
-    #Modify Text/Curve to Mesh
+    #Modify text/curve to mesh
     bpy.ops.object.convert(target="MESH")
+    #From the conversion, get the lower point on Y-axis for calibration
+    if(locY == None):
+        minimalYPos = 99
+        for vertex in bpy.data.objects[meshName].data.vertices:
+            minimalYPos = min(minimalYPos, vertex.co.y)
+        locY = (bpy.data.objects[meshName].dimensions.y / (-2)) - minimalYPos
     #Extrude Number
     bpy.ops.object.editmode_toggle()
     bpy.ops.mesh.select_all(action='SELECT')
     bpy.ops.mesh.extrude_region_move(TRANSFORM_OT_translate={"value":(0, 0, 1), "orient_axis_ortho":'X', "orient_type":'NORMAL', "orient_matrix_type":'NORMAL', "constraint_axis":(False, False, True), "mirror":False, "use_proportional_edit":False, "proportional_edit_falloff":'SMOOTH', "proportional_size":1, "use_proportional_connected":False, "use_proportional_projected":False, "snap":False, "snap_target":'CLOSEST', "snap_point":(0, 0, 0), "snap_align":False, "snap_normal":(0, 0, 0), "gpencil_strokes":False, "cursor_transform":False, "texture_space":False, "remove_on_cancel":False, "view2d_edge_pan":False, "release_confirm":False, "use_accurate":False, "use_automerge_and_split":False})
     bpy.ops.object.editmode_toggle()
     #Change mesh origin
-    #bpy.ops.object.origin_set(type='ORIGIN_CENTER_OF_VOLUME', center='MEDIAN')
-    locY = bpy.data.objects[meshName].dimensions.y / 10
     bpy.data.objects[meshName].location = (0, locY, -0.5)
     #Apply transformations
     bpy.ops.object.transform_apply(location=True, rotation=False, scale=False)
     #Clean the curve
     bpy.data.curves.remove(curve)
-    # Rename Mesh    
+    # Rename mesh    
     bpy.data.objects[meshName].data.name = meshName
-    #Unselect Object
+    #Unselect object
     bpy.data.objects[meshName].select_set(False)
-    #Return Object Name
-    return meshName
+    #Return localisation Y
+    return locY
 
 #Function: Creation of all Numbers
-def generateAllNumbers():
+def generateAllNumbersMeshes():
+    #Generate number 0, and find the center of the number. The Y localisation for 0 determine the all set of meshes center
+    locY = numberMeshCreator('0')
     #For each number on the list, create them
     for x in _numbers:
-        numberCreator(x)
+        numberMeshCreator(x, locY)
+    #Then, add 0 on the tuple list
+    _numbers.append('0')
+   #Clean the font used
+    bpy.data.fonts.remove(_fontOpen)
         
 #Function: Deletion of all numbers
-def clearAllNumbers():
+def clearAllNumbersMeshes():
     #Delete all meshes linked to numbers
     for x in _numbers:
         bpy.data.meshes.remove(bpy.data.objects[_numName + x].data)
 
 #Function: Modify the Number Mesh into a new position
-def transformNumber(number, scale, locX, locY, locZ, rotate):
+def transformNumberMeshes(number, scale, locX, locY, locZ, rotate, imprint):
     #Get the number mesh name
     meshName = _numName + number
-    #Change Number Dimensions
-    bpy.data.objects[meshName].scale = (scale, scale, 1)
-    #Change Position
+    #Change number dimensions
+    bpy.data.objects[meshName].scale = (scale, scale, imprint * 2)
+    #Change position
     bpy.data.objects[meshName].location = (locX, locY, locZ)
-    #Change Z Rotation
+    #Change Z rotation
     bpy.data.objects[meshName].rotation_euler = (0, 0, math.radians(rotate))
     
 #######################
@@ -131,6 +143,39 @@ def booleanOperationOnObject(objDice, objText):
     bpy.context.view_layer.objects.active = bpy.data.objects[objDice]
     bpy.ops.object.modifier_apply(modifier="boolDiff")
     
+#Function: Merging multi-triangle faces into one polygon
+def meshMergeTriangularFaces(meshName):
+    #Initialization of the normal vector list
+    normalVectorList = []
+    #For each polygon, fill normalVectorList with no doubles
+    for polygon in bpy.data.objects[meshName].data.polygons:
+        foundInList = False
+        for vector in normalVectorList:
+            if(vector == polygon.normal):
+                foundInList = True
+                break
+        if(not foundInList):
+            #Must define Vector type, else it appends the pointer to polygon.normal that will desappear with face dissolution
+            normalVectorList.append(mathutils.Vector(polygon.normal))
+    #Enter face selection mode through Edit mode and initialize the mesh
+    bpy.ops.object.mode_set(mode = 'EDIT') 
+    bpy.ops.mesh.select_mode(type = 'FACE')
+    bpy.ops.mesh.select_all(action = 'DESELECT')           
+    #Cycle through the polygons and the list of normals again and select all faces with the same normal
+    for vector in normalVectorList:
+        #Enter Object mode for face selection
+        bpy.ops.object.mode_set(mode = 'OBJECT')
+        for polygon in bpy.data.objects[meshName].data.polygons:
+            if(vector == polygon.normal):
+                polygon.select = True
+        #Go to edit mode for face dissolving
+        bpy.ops.object.mode_set(mode = 'EDIT')
+        bpy.ops.mesh.dissolve_faces()
+        #Deselect all faces and continue looping
+        bpy.ops.mesh.select_all(action = 'DESELECT')
+    #Return to object mode
+    bpy.ops.object.mode_set(mode = 'OBJECT')
+
 ######################
 ### MESH CREATIONS ###
 ######################
@@ -305,21 +350,58 @@ def generateAntiprismSolid(diceName, sides, rad, dep, extrudeSize):
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
     
 ###########################
+### MESH TRANSFORMATION ###
+###########################
+
+#Function: Call bevel parameters modifier
+def meshBevelGlobalParameters(activation, amount, segments, method):
+    global _bevelMethodActivation, _bevelAmountPercentage, _bevelSegments, _bevelMethodIsVertice
+    _bevelMethodActivation = activation
+    _bevelAmountPercentage = amount
+    _bevelSegments = segments
+    _bevelMethodIsVertice = method
+
+#Function: Apply bevel to the mesh
+def meshBevel(meshName):
+    #If method is activated
+    if(_bevelMethodActivation):
+        #Enter edit mode
+        bpy.ops.object.mode_set(mode = 'EDIT')
+        #Select all the vertices
+        bpy.ops.mesh.select_all(action = 'SELECT')
+        #Get the Bevel affect
+        if (_bevelMethodIsVertice):
+            affectType = 'EDGES'
+        else:
+            affectType = 'VERTICES'
+        #Apply Bevel
+        bpy.ops.mesh.bevel(offset_type='PERCENT', profile_type='SUPERELLIPSE', offset_pct=_bevelAmountPercentage, segments=_bevelSegments, affect=affectType, clamp_overlap=False, loop_slide=False, mark_seam=False, mark_sharp=False, harden_normals=False, face_strength_mode='NONE', vmesh_method='ADJ', release_confirm=True)
+        #Return to object mode
+        bpy.ops.object.mode_set(mode = 'OBJECT')
+    
+###########################
 ### DICE-OBJECT ACTIONS ###
 ###########################
     
 #Replace all dices
-def replaceAllDices():
-    #Distance //To be placed on global variable ?
-    distance = 40
-    #Create a counter for the position offset
-    position = ((len(_diceList) - 1) * distance) / (-2)
-    #For each dice created
-    for dice in _diceList:
-        #Change Position of D4
-        bpy.data.objects[dice].hide_set(False)
-        bpy.data.objects[dice].location = (0, position, 0)
-        position = position + distance
+def repositionAllDicesOnPlane(distanceBetweenDice = 50):
+    #Get the dice list table lenght
+    diceListLenght = len(_diceList)
+    #Calculte the number of dice per line to be placed
+    numberDicePerLine = math.ceil(math.sqrt(diceListLenght))
+    #Calculate the minimal position for line and column = 0
+    minimalPosition = ((1 - numberDicePerLine) * distanceBetweenDice) / 2
+    #Reposition all the dices
+    for diceIndex in range(diceListLenght):
+        #Set the visibility to operate on the die
+        bpy.data.objects[_diceList[diceIndex]].hide_set(False)
+        #Generate line and column from the dice index
+        column = diceIndex % numberDicePerLine
+        line = int(diceIndex / numberDicePerLine)
+        #Change the die location
+        x = minimalPosition + (line * distanceBetweenDice)
+        y =  minimalPosition + (column * distanceBetweenDice)
+        bpy.data.objects[diceIndex].location = (x, y, 0)
         
 #Function: Fully rename de mesh and the linked object
 #oldName : the name of the solid when created
@@ -463,47 +545,55 @@ def sequenceNumberBipyramidalDice(faces):
 #diceName : name of the dice object in blender
 #rotationSequence : sequence of the dice to apply all the numbers
 #numberOrder : number sequence to be applied to the dice
-def diceAlgorithm(diceName, rotationSequence, numberOrder, textPosX, textPosY, textPosZ, textScale, textRotation, isPercentile=False):
-    #Get the dice size using numberOrder
-    faces = len(numberOrder)
+def diceAlgorithm(diceName, rotationSequence, numberSequenceOrder, textPosX, textPosY, textPosZ, textScale, textRotation, textImprint, isPercentile=False):
+    #Bevel the edges of the die --All parameters on global
+    meshBevel(diceName)
+    #Get the dice size using numberSequenceOrder
+    faces = len(numberSequenceOrder)
     #Get the dice max. number
-    maxNumber = max(numberOrder)
+    maxNumber = max(numberSequenceOrder)
     #In case of a dice with more than 8 faces, apply the dotted 6 and 9 for disambiguition
     if(maxNumber > 8):
         #Prepare the dot/underscore sign position
         #Trigonometry has to be used to calculate the dot position
         ratioX = math.sin(math.radians(textRotation * -1))
         ratioY = math.cos(math.radians(textRotation * -1))
-        transformNumber('.', textScale, textPosX + (_dotYPosition * textScale * ratioX), textPosY + (_dotYPosition * textScale * ratioY), textPosZ, textRotation)
+        transformNumberMeshes('.', textScale, textPosX + (_dotYPosition * textScale * ratioX), textPosY + (_dotYPosition * textScale * ratioY), textPosZ, textRotation, textImprint)
     #Rotation & Boolean operation between Dice and Number for all faces
     for i in range(faces):
         #Create the number object name
-        numberOjectName = str(numberOrder[i])
+        numberOjectName = str(numberSequenceOrder[i])
         #If it is a percentile dice, add a 0 to the name
         if(isPercentile):
             numberOjectName = numberOjectName + '0'
         #Modify Number Position
-        transformNumber(numberOjectName, textScale, textPosX, textPosY, textPosZ, textRotation)
+        transformNumberMeshes(numberOjectName, textScale, textPosX, textPosY, textPosZ, textRotation, textImprint)
         #Apply boolean operation on dice
         booleanOperationOnObject(diceName, _numName + numberOjectName)
         #If there is a 6 or a 9 face, apply the dot/underscore on the bottom
-        if((maxNumber > 8) and (isPercentile == False) and ((numberOrder[i] == 6) or (numberOrder[i] == 9))):
+        if((maxNumber > 8) and (isPercentile == False) and ((numberSequenceOrder[i] == 6) or (numberSequenceOrder[i] == 9))):
             booleanOperationOnObject(diceName, _numName + '.')
         #Sequence the rotations and boolean for half a dice
         for sequence in rotationSequence[(i % len(rotationSequence))]:
             bpy.data.objects[diceName].rotation_euler = sequence
             bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    #Add the created dice to the list
+    _diceList.append(diceName)
+    #Hide the dice
+    bpy.data.objects[diceName].hide_set(True)
+    #Print out the success
+    print(diceName, "has been created")
             
 ###############################            
 ### CLASSIC DICE GENERATORS ###
 ###############################
             
 #Function: Tetrahedron Dice 4 Generator
-def dice4Generator():
+def dice4Generator(scale, textSize, textImprint):
     #Dice Name
     diceName = 'D4'
     #Number order
-    numOrd = (4, 4, 4, 3, 3, 3, 2, 2, 2, 1, 1, 1)
+    numberSequenceOrder = (4, 4, 4, 3, 3, 3, 2, 2, 2, 1, 1, 1)
     #Transformations pre-calculations
     transformationX1 = (math.radians(-19.47), 0, 0)
     transformationX2 = (math.radians(19.47), 0, 0)
@@ -531,25 +621,21 @@ def dice4Generator():
     #Rename Tetrahedron
     renameSolid('Solid', diceName)
     #Center and position dice
-    solidInitializePosition(diceName, 15)
+    solidInitializePosition(diceName, scale)
     #Initial rotation
     bpy.data.objects[diceName].rotation_euler = (0, 0, math.radians(-30))
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
     bpy.data.objects[diceName].rotation_euler = (0, math.radians(180), 0)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
     #Apply the rotation algorithm
-    diceAlgorithm(diceName, rotations, numOrd, 0, 6.5, 5, 10, 0)
-    #Add the created dice to the list
-    _diceList.append(diceName)
-    #Hide the D4
-    bpy.data.objects[diceName].hide_set(True)             
+    diceAlgorithm(diceName, rotations, numberSequenceOrder, 0, (6.5/15)*scale, (scale/3), textSize, 0, textImprint)    
 
 #Function: Cube Dice 6 Generator
-def dice6Generator():
+def dice6Generator(scale, textSize, textImprint):
     #Dice Name
     diceName = 'D6'
     #Number order
-    numOrd = (6, 2, 4, 3, 1, 5)
+    numberSequenceOrder = (6, 2, 4, 3, 1, 5)
     #Transformations pre-calculations
     transformationA = (0, math.radians(-90), math.radians(90))
     transformationB = (math.radians(180), 0, 0)
@@ -565,22 +651,18 @@ def dice6Generator():
         (transformationD,)
     )
     #Cube generation
-    bpy.ops.mesh.primitive_cube_add(location=(0.0, 0.0, 0.0), rotation=(0.0, 0.0, 0.0), scale=(8, 8, 8))
+    bpy.ops.mesh.primitive_cube_add(location=(0.0, 0.0, 0.0), rotation=(0.0, 0.0, 0.0), scale=(scale, scale, scale))
     #Modify Cube name to D6
     renameSolid('Cube', diceName)
     #Apply the rotation algorithm
-    diceAlgorithm(diceName, rotations, numOrd, 0, 0, 8, 16, 0)
-    #Add the created dice to the list
-    _diceList.append(diceName)
-    #Hide the D6
-    bpy.data.objects[diceName].hide_set(True)
+    diceAlgorithm(diceName, rotations, numberSequenceOrder, 0, 0, scale, textSize, 0, textImprint)
             
 #Function: Octahedron Dice 8 Generator
-def dice8Generator():
+def dice8Generator(scale, textSize, textImprint):
     #Dice Name
     diceName = 'D8'    
     #Number order
-    numOrd = (8, 2, 6, 4, 5, 3, 7, 1)
+    numberSequenceOrder = (8, 2, 6, 4, 5, 3, 7, 1)
     #Transformations pre-calculations
     transformationX1 = (math.radians(-35.265), 0, 0)
     transformationX2 = (math.radians(35.265), 0, 0)
@@ -603,20 +685,16 @@ def dice8Generator():
     bpy.data.objects[diceName].rotation_euler = (math.radians(35.265), 0, 0)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
     #Center and position dice
-    solidInitializePosition(diceName, 15)
+    solidInitializePosition(diceName, scale)
     #Apply the rotation algorithm
-    diceAlgorithm(diceName, rotations, numOrd, 0, 1, 8.66, 13, 0)
-    #Add the created dice to the list
-    _diceList.append(diceName)
-    #Hide the D8
-    bpy.data.objects[diceName].hide_set(True)          
+    diceAlgorithm(diceName, rotations, numberSequenceOrder, 0, (scale/15), (8.66/15)*scale, textSize, 0, textImprint)         
             
 #Function: Bipyramidal Dice 10 Generator
-def dice10UnitGenerator():
+def dice10UnitGenerator(scale, textSize, textImprint):
     #Dice Name
     diceName = 'D10u'
     #Number order
-    numOrd = (6, 4, 8, 2, 0, 1, 9, 3, 7, 5)
+    numberSequenceOrder = (6, 4, 8, 2, 0, 1, 9, 3, 7, 5)
     #Transformations pre-calculations
     transformationX1 = (math.radians(-35.7), 0, 0)
     transformationX2 = (math.radians(35.7), 0, 0)
@@ -636,20 +714,16 @@ def dice10UnitGenerator():
     bpy.data.objects[diceName].rotation_euler = (math.radians(-54.3), 0, 0)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
     #Initialize position, rotation and scale
-    solidInitializePosition(diceName, 13)
+    solidInitializePosition(diceName, scale)
     #Apply the rotation algorithm
-    diceAlgorithm(diceName, rotations, numOrd, 0, 0, 8.55, 12, 0)
-    #Add the created dice to the list
-    _diceList.append(diceName)
-    #Hide the D10
-    bpy.data.objects[diceName].hide_set(True)  
+    diceAlgorithm(diceName, rotations, numberSequenceOrder, 0, 0, (8.55/13)*scale, textSize, 0, textImprint)
     
 #Function: Bipyramidal Dice 10 Generator
-def dice10DecimalGenerator():
+def dice10DecimalGenerator(scale, textSize, textImprint):
     #Dice Name
     diceName = 'D10d'
     #Number order
-    numOrd = (6, 4, 8, 2, 0, 1, 9, 3, 7, 5)
+    numberSequenceOrder = (6, 4, 8, 2, 0, 1, 9, 3, 7, 5)
     #Transformations pre-calculations
     transformationX1 = (math.radians(-35.7), 0, 0)
     transformationX2 = (math.radians(35.7), 0, 0)
@@ -669,20 +743,16 @@ def dice10DecimalGenerator():
     bpy.data.objects[diceName].rotation_euler = (math.radians(-54.3), 0, 0)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
     #Initialize position, rotation and scale
-    solidInitializePosition(diceName, 13)
+    solidInitializePosition(diceName, scale)
     #Apply the rotation algorithm
-    diceAlgorithm(diceName, rotations, numOrd, 0, -1.55, 8.55, 9, 90, True)
-    #Add the created dice to the list
-    _diceList.append(diceName)
-    #Hide the D10
-    bpy.data.objects[diceName].hide_set(True)         
+    diceAlgorithm(diceName, rotations, numberSequenceOrder, 0, (-1.55/13)*scale, (8.55/13)*scale, textSize, 90, textImprint, True)        
                     
 #Function: Dodecahedron Dice 12 Generator
-def dice12Generator():
+def dice12Generator(scale, textSize, textImprint):
     #Dice Name
     diceName = 'D12'
     #Number order
-    numOrd = (12, 8, 6, 4, 2, 10, 1, 3, 11, 9, 7, 5)
+    numberSequenceOrder = (12, 8, 6, 4, 2, 10, 1, 3, 11, 9, 7, 5)
     #Transformations pre-calculations
     transformationX1 = (math.radians(63.43), 0, 0)
     transformationX2 = (math.radians(-63.43), 0, 0)
@@ -702,24 +772,22 @@ def dice12Generator():
     bpy.ops.mesh.primitive_solid_add(source='12')
     #Rename Dodecahedron
     renameSolid('Solid', diceName)
+    #Merging all faces with the same normal vector
+    meshMergeTriangularFaces(diceName)
     #Rotate the dice for a better scaling
     bpy.data.objects[diceName].rotation_euler = (math.radians(-58.285), 0, 0)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
     #Initialize position, rotation and scale
-    solidInitializePosition(diceName, 12)
+    solidInitializePosition(diceName, scale)
     #Apply the rotation algorithm
-    diceAlgorithm(diceName, rotations, numOrd, 0, 0, 9.54, 10, 0)
-    #Add the created dice to the list
-    _diceList.append(diceName)
-    #Hide the D12
-    bpy.data.objects[diceName].hide_set(True)          
+    diceAlgorithm(diceName, rotations, numberSequenceOrder, 0, 0, (9.54/12)*scale, textSize, 0, textImprint)       
     
 #Function: Icosahedron Dice 20 Generator
-def dice20Generator():    
+def dice20Generator(scale, textSize, textImprint):    
     #Dice Name
     diceName = 'D20'
     #Number order
-    numOrd = (20, 14, 6, 4, 8, 10, 16, 2, 18, 12, 1, 19, 9, 3, 13, 5, 11, 7, 17, 15)
+    numberSequenceOrder = (20, 14, 6, 4, 8, 10, 16, 2, 18, 12, 1, 19, 9, 3, 13, 5, 11, 7, 17, 15)
     #Transformations pre-calculations
     transformationInit = (math.radians(20.905), 0, 0)
     transformationX1 = (math.radians(41.81), 0, 0)
@@ -749,27 +817,23 @@ def dice20Generator():
     bpy.data.objects[diceName].rotation_euler = (math.radians(20.905), 0, 0)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
     #Initialize position, rotation and scale
-    solidInitializePosition(diceName, 14)
+    solidInitializePosition(diceName, scale)
     #Apply the rotation algorithm
-    diceAlgorithm(diceName, rotations, numOrd, 0, 0, 11.125, 7, 0)
-    #Add the created dice to the list
-    _diceList.append(diceName)
-    #Hide the D20
-    bpy.data.objects[diceName].hide_set(True)  
+    diceAlgorithm(diceName, rotations, numberSequenceOrder, 0, 0, (11.125/14)*scale, textSize, 0, textImprint)
     
 ################################
 ### PRISMATIC DICE GENERATOR ###
 ################################
     
 #Function: Generate any even-faced prismatic dice
-def diceEvenPrismaticGenerator(faces, radius, depth, extrude, scale, textSize):
+def diceEvenPrismaticGenerator(faces, radius, depth, extrude, scale, textSize, textImprint):
     #Test the function use, if the number of faces is odd, quit the function
     if (((faces % 2) == 1) and (faces < 4)):
         return
     #Dice Name
     diceName = 'D' + str(faces) + 'Prism'
     #Generate the number sequence
-    numberSequence = sequenceNumberPrismDice(faces)
+    numberSequenceOrder = sequenceNumberPrismDice(faces)
     #Generate prism rotation
     transformationY = (0, math.radians(360.0 / faces), 0)
     rotations = ((transformationY,),)
@@ -780,21 +844,17 @@ def diceEvenPrismaticGenerator(faces, radius, depth, extrude, scale, textSize):
     #Get the face upper position using dimensions
     textZ = bpy.data.objects[diceName].dimensions.z / 2
     #Apply the rotation algorithm
-    diceAlgorithm(diceName, rotations, numberSequence, 0, 0, textZ, textSize, 0)
-    #Add the created dice to the list
-    _diceList.append(diceName)
-    #Hide the dice
-    bpy.data.objects[diceName].hide_set(True)     
+    diceAlgorithm(diceName, rotations, numberSequenceOrder, 0, 0, textZ, textSize, 0, textImprint)    
     
 #Function: Generate any odd-faced prismatic dice
-def diceOddPrismaticGenerator(faces, radius, depth, extrude, scale, textSize):
+def diceOddPrismaticGenerator(faces, radius, depth, extrude, scale, textSize, textImprint):
     #Test the function use, if the number of faces is even, quit the function
     if (((faces % 2) == 0) and (faces < 3)):
         return
     #Dice Name
     diceName = 'D' + str(faces) + 'Prism'
     #Generate the number sequence
-    numberSequence = sequenceNumberPrismDice(faces)
+    numberSequenceOrder = sequenceNumberPrismDice(faces)
     #Generate prism rotation
     transformationY = (0, math.radians(360.0 / faces), 0)
     transformationZ = (0, 0, math.radians(180))
@@ -813,21 +873,17 @@ def diceOddPrismaticGenerator(faces, radius, depth, extrude, scale, textSize):
     #Get the face upper position using dimensions
     textZ = abs(bpy.data.objects[diceName].data.vertices[poly.vertices[0]].co.z)
     #Apply the rotation algorithm
-    diceAlgorithm(diceName, rotations, numberSequence, textX, 0, textZ, textSize, -90)
-    #Add the created dice to the list
-    _diceList.append(diceName)
-    #Hide the dice
-    bpy.data.objects[diceName].hide_set(True)
+    diceAlgorithm(diceName, rotations, numberSequenceOrder, textX, 0, textZ, textSize, -90, textImprint)
     
 #Function: Generate any prismatic dice
-def diceAntirismaticGenerator(faces, radius, depth, extrude, scale, textSize):
+def diceAntirismaticGenerator(faces, radius, depth, extrude, scale, textSize, textImprint):
     #Antiprismatic dice are only even, and start with a 6-face dice
     if (((faces % 2) == 1) and (faces < 6)):
         return
     #Dice Name
     diceName = 'D' + str(faces) + 'Antiprism'
     #Generate the number sequence
-    numberSequence = sequenceNumberPrismDice(faces)
+    numberSequenceOrder = sequenceNumberPrismDice(faces)
     #Generate the solid
     generateAntiprismSolid(diceName, faces, radius, depth, extrude)
     #Initialize position, rotation and scale
@@ -868,24 +924,20 @@ def diceAntirismaticGenerator(faces, radius, depth, extrude, scale, textSize):
     #The minimal value of Y always points toward the triangle base of the polygon
     minimalY = min(upperY, lowerY)
     #Calculate the text Y position on the solid
-    textY = ((1/4) * (upperY + lowerY)) - minimalY
+    textY = ((1/5) * (upperY + lowerY)) - minimalY
     #Get the Z-text position
     textZ = abs(bpy.data.objects[diceName].data.vertices[poly.vertices[0]].co.z)
     #Generate automatic rotations
     rotations = ((transformationXYZ1, transformationXPosCalc), (transformationXYZ2, transformationXPosCalc))
     #Apply the rotation algorithm
-    diceAlgorithm(diceName, rotations, numberSequence, 0, textY, textZ, textSize, 0)
-    #Add the created dice to the list
-    _diceList.append(diceName)
-    #Hide the dice
-    bpy.data.objects[diceName].hide_set(True)
+    diceAlgorithm(diceName, rotations, numberSequenceOrder, 0, textY, textZ, textSize, 0, textImprint)
     
 #Function: Generate any bipyramidal dice
-def diceBipyramidGenerator(faces, radius, depth, scale, textSize):
+def diceBipyramidGenerator(faces, radius, depth, scale, textSize, textImprint):
     #Dice Name
     diceName = 'D' + str(faces) + 'Bipyramid'
     #Generate the number sequence
-    numberSequence = sequenceNumberBipyramidalDice(faces)
+    numberSequenceOrder = sequenceNumberBipyramidalDice(faces)
     #Calculate the cone polygon shape
     polygonOrder = math.trunc(faces / 2)
     #Generate the bipyramidal solid base
@@ -948,62 +1000,75 @@ def diceBipyramidGenerator(faces, radius, depth, scale, textSize):
     #Get the Z-text position
     textZ = abs(vertex.co.z)
     #Apply the rotation algorithm
-    diceAlgorithm(diceName, rotations, numberSequence, 0, textY, textZ, textSize, textRotation)
-    #Add the created dice to the list
-    _diceList.append(diceName)
-    #Hide the dice
-    bpy.data.objects[diceName].hide_set(True)
-    
+    diceAlgorithm(diceName, rotations, numberSequenceOrder, 0, textY, textZ, textSize, textRotation, textImprint)
+
+###############################
+### INITIALIZATION FUNCTION ###
+###############################
+
+#Function : Initialize Blender scene
+def initializeBlenderSceneObjects():
+    #Delete all meshes from Blender Scene
+    for object in bpy.data.objects:
+        if(object.type == 'MESH'):
+            bpy.data.meshes.remove(object.data)
+
 #####################
 ### MAIN FUNCTION ###
 #####################
     
 #Main function
 def main():
-    #Generate all numbers
-    generateAllNumbers()
-    #Dice Generation Sequence
-    dice4Generator()
-    dice6Generator()
-    dice8Generator()
-    dice10UnitGenerator()
-    dice10DecimalGenerator()
-    dice12Generator()
-    dice20Generator()
-    #Even-faces prism dice
-    diceEvenPrismaticGenerator(4, 0.75, 2, 0.75, 8, 12)
-    diceEvenPrismaticGenerator(6, 0.75, 2, 0.75, 8, 9)  
-    diceEvenPrismaticGenerator(8, 1, 2, 0.75, 8, 8) 
-    diceEvenPrismaticGenerator(10, 1.25, 2, 0.75, 8, 8)
-    #Odd-faces prism dice
-    diceOddPrismaticGenerator(3, 1, 1.25, 0.75, 8, 7) 
-    diceOddPrismaticGenerator(5, 1.25, 1.5, 1, 8, 6)
-    diceOddPrismaticGenerator(7, 1.5, 1.5, 1.25, 8, 6)
-    diceOddPrismaticGenerator(9, 2.5, 2.5, 1.5, 8, 6)
-    #Antiprism dices
-    diceAntirismaticGenerator(6, 0.9, 2.25, 0.75, 9, 9)
-    diceAntirismaticGenerator(8, 0.9, 2.25, 0.75, 9, 9)
-    diceAntirismaticGenerator(10, 1, 2.25, 0.75, 9, 8) 
-    diceAntirismaticGenerator(12, 1, 2.25, 0.5, 9, 7)
-    diceAntirismaticGenerator(14, 1.25, 2.5, 0.5, 9, 7) 
-    diceAntirismaticGenerator(16, 1.25, 2.5, 0.5, 9, 7) 
-    diceAntirismaticGenerator(18, 1.33, 2.75, 0.5, 9, 7) 
-    diceAntirismaticGenerator(20, 1.5, 3, 0.5, 9, 7) 
-    #Bipyramidal dices --D8 and 10 not generated : looks a lot like Platonic
-    diceBipyramidGenerator(6, 2, 2.25, 10, 8)
-    diceBipyramidGenerator(12, 2.25, 2.25, 10, 6)
-    diceBipyramidGenerator(14, 2.5, 2.25, 10, 6)
-    diceBipyramidGenerator(16, 2.5, 2.5, 10, 6)
-    diceBipyramidGenerator(18, 2.75, 2.5, 10, 6)
-    diceBipyramidGenerator(20, 2.75, 2.5, 10, 6)
- 
-    #Delete all numbers
-    clearAllNumbers()
-    #Replace all dices of a better view
-    #replaceAllDices()
+    #DEBUG
+    print("\n### DICE SCRIPT ALGORITHM ###\n")
     
-    #Clean the font used
-    bpy.data.fonts.remove(_fontOpen)
+    #Initialize the scene by deleting everything on the scene
+    initializeBlenderSceneObjects()
+    #Generate all numbers
+    generateAllNumbersMeshes()
+    #Dice modifiers parameters
+    meshBevelGlobalParameters(True, 15, 10, False)
+
+    #Dice Generation Sequence
+    dice4Generator(15, 10, 0.5)
+    dice6Generator(8, 16, 0.5)
+    dice8Generator(15, 13, 0.5)
+    dice10UnitGenerator(13, 12, 0.5)
+    dice10DecimalGenerator(13, 9, 0.5)
+    dice12Generator(12, 10, 0.5)
+    dice20Generator(14, 7, 0.5)
+    #Even-faces prism dice
+    diceEvenPrismaticGenerator(4, 0.75, 2, 0.75, 8, 12, 0.5)
+    diceEvenPrismaticGenerator(6, 0.75, 2, 0.75, 8, 9, 0.5)  
+    diceEvenPrismaticGenerator(8, 1, 2, 0.75, 8, 8, 0.5) 
+    diceEvenPrismaticGenerator(10, 1.25, 2, 0.75, 8, 8, 0.5)
+    #Odd-faces prism dice
+    diceOddPrismaticGenerator(3, 1, 1.25, 0.75, 8, 7, 0.5) 
+    diceOddPrismaticGenerator(5, 1.25, 1.5, 1, 8, 6, 0.5)
+    diceOddPrismaticGenerator(7, 1.5, 1.5, 1.25, 8, 6, 0.5)
+    diceOddPrismaticGenerator(9, 2.5, 2.5, 1.5, 8, 6, 0.5)
+    #Antiprism dices
+    diceAntirismaticGenerator(6, 0.9, 2.25, 0.75, 9, 9, 0.5)
+    diceAntirismaticGenerator(8, 0.9, 2.25, 0.75, 9, 9, 0.5)
+    diceAntirismaticGenerator(10, 1, 2.25, 0.75, 9, 8, 0.5) 
+    diceAntirismaticGenerator(12, 1, 2.25, 0.5, 9, 7, 0.5)
+    diceAntirismaticGenerator(14, 1.25, 2.5, 0.5, 9, 7, 0.5) 
+    diceAntirismaticGenerator(16, 1.25, 2.5, 0.5, 9, 7, 0.5) 
+    diceAntirismaticGenerator(18, 1.33, 2.75, 0.5, 9, 7, 0.5) 
+    diceAntirismaticGenerator(20, 1.5, 3, 0.5, 9, 6, 0.5) 
+    #Bipyramidal dices --D8 and 10 not generated : looks a lot like Platonic
+    diceBipyramidGenerator(6, 2, 2.25, 10, 8, 0.5)
+    diceBipyramidGenerator(12, 2.25, 2.25, 10, 6, 0.5)
+    diceBipyramidGenerator(14, 2.5, 2.25, 10, 6, 0.5)
+    diceBipyramidGenerator(16, 2.5, 2.5, 10, 6, 0.5)
+    diceBipyramidGenerator(18, 2.75, 2.5, 10, 6, 0.5)
+    diceBipyramidGenerator(20, 2.75, 2.5, 10, 6, 0.5)
+
+    #Delete all numbers
+    clearAllNumbersMeshes()    
+    
+    #Replace all dices of a better view
+    #repositionAllDicesOnPlane() 
             
 if __name__ == "__main__":
     main()
