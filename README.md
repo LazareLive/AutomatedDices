@@ -4,7 +4,7 @@ Made by Lazare from July 2022<br/>
 Based on "Design Your Own Custom Dice for Free | Blender Tutorial | DIY with Cly Ep. 21" by Cly Faker<br/>
 https://www.youtube.com/watch?v=nCowrvfOr3Q<br/>
 
-<h2>Functionnlities</h2>
+<h2>Functionalities</h2>
 <h3>Shapes</h3>
 <ul>
   <li>Traditionnal Platonic dice : D4, D6, D8, D10, D10%, D12 and D20</li>
@@ -16,6 +16,7 @@ https://www.youtube.com/watch?v=nCowrvfOr3Q<br/>
   <li>Pseudo antiprism D4</li>
   <li>D2 and D4 rounded dice</li>
 </ul>
+<b>All these dice are exported in STL format</b>
 <h3>Transformations</h3>
 <ul>
   <li>All dice are scalable</li>
