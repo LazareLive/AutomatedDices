@@ -8,7 +8,8 @@
 #Prism, Antiprism and Bipyramid n-sided dice
 #D2 and D4 rounded cube dices
 #Pseudo-Antiprism D4
-#D24 tetrakis hexahedron
+#D30 Rhombic
+#D24, D48, D60 nkis-hedron
 #Dice scale can be chosen on classic dices
 #Dice size and extrusions can be parametered on prism, antiprism and bipyramidal dice
 #Text is centered, whatever the used font
@@ -17,15 +18,16 @@
 #Mesh alteration is global for all asked dice to be generated
 
 #--- TO DO LIST ---
-#Do rhombic dices D30
-#Do other D24, D48, D60, D120 ... and more ?
-#Do D5 and D7 dices
+#Do D120
+#Do Icosphere dice
+#Do UVsphere dice
+#Change dot method for 6 & 9
+#Do imprinted odd prismatic dice
 #Do extruded pyramid dices (shard dice)
-#Do bipyramidal n-sided dices with twice the number order
 
 #Import Blender librairies
 import bpy, mathutils
-#Import additionnal math librarie
+#Import additionnal math library
 import math
 
 #Global variables
@@ -34,11 +36,10 @@ _fontFile = "C:\\Windows\\Fonts\\CantaraGotica.ttf"
 #Internal global variables
 _fontOpen = bpy.data.fonts.load(_fontFile)
 _numName = '_Num'
-_numbers = ['.', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15',
-    '16', '17', '18', '19', '20', '21', '22', '23', '24', 
-    '30', '40', '50', '60', '70', '80', '90', '00']
+_numbers = []
 _dotYPosition = -0.25
 _diceList = []
+_numSize = 0.0
 
 #Global bevel modification parameters
 _bevelMethodActivation = False
@@ -52,6 +53,8 @@ _bevelMethodIsVertice = True
 
 #Function: Number Creator
 def numberMeshCreator(stringText, locY=None):
+    #Initialize numSize usage from global
+    global _numSize
     #Create Text Object
     bpy.ops.object.text_add(align='WORLD', location=(0.0, 0.0, 0.0), rotation=(0.0, 0.0, 0.0), scale=(0.0, 0.0, 0.0))
     #Modify text alignments
@@ -73,6 +76,7 @@ def numberMeshCreator(stringText, locY=None):
         for vertex in bpy.data.objects[meshName].data.vertices:
             minimalYPos = min(minimalYPos, vertex.co.y)
         locY = (bpy.data.objects[meshName].dimensions.y / (-2)) - minimalYPos
+        _numSize = bpy.data.objects[meshName].dimensions.y
     #Extrude Number
     bpy.ops.object.editmode_toggle()
     bpy.ops.mesh.select_all(action='SELECT')
@@ -92,7 +96,14 @@ def numberMeshCreator(stringText, locY=None):
     return locY
 
 #Function: Creation of all Numbers
-def generateAllNumbersMeshes():
+def generateAllNumbersMeshes(maxNumber = 100):
+    #Get the global numbers generated variable
+    global _numbers
+    #Initialize _numbers array
+    _numbers.append('.')
+    for num in range(maxNumber):
+        _numbers.append(str(num + 1))
+    _numbers.append('00')
     #Generate number 0, and find the center of the number. The Y localisation for 0 determine the all set of meshes center
     locY = numberMeshCreator('0')
     #For each number on the list, create them
@@ -995,7 +1006,7 @@ def diceAntirismaticGenerator(faces, radius, depth, extrude, scale, textSize, te
     #The minimal value of Y always points toward the triangle base of the polygon
     minimalY = min(upperY, lowerY)
     #Calculate the text Y position on the solid
-    textY = ((1/5) * (upperY + lowerY)) - minimalY
+    textY = (_numSize * scale / 2) - minimalY + ((upperY + lowerY) / 10)
     #Get the Z-text position
     textZ = abs(bpy.data.objects[diceName].data.vertices[poly.vertices[0]].co.z)
     #Generate automatic rotations
@@ -1058,20 +1069,19 @@ def diceBipyramidGenerator(faces, radius, depth, scale, textSize, textImprint):
     #Get the Y-text position from the shape of the upper face
     upperY = 0
     lowerY = 0
+    #Retrieve upper and lower Y limits of the polygon
     for v in polygon.vertices:
         vertex = bpy.data.objects[diceName].data.vertices[v]
         upperY = max(upperY, vertex.co.y)
         lowerY = min(lowerY, vertex.co.y)
-    textYDivider = math.ceil(math.sqrt(polygonOrder + 1))
-    textY = lowerY + ((1/textYDivider) * (upperY - lowerY))
-    #Set rotation if n faces > 12
-    textRotation = 0
-    if(faces > 12):
-        textRotation = 90
+    #Calculate the text Y position on the solid
+    textY = (_numSize * scale / 2) + lowerY + (upperY - lowerY)/20 
+    if(faces == 6):
+        textY = lowerY + (upperY - lowerY)/2
     #Get the Z-text position
     textZ = abs(vertex.co.z)
     #Apply the rotation algorithm
-    diceAlgorithm(diceName, rotations, numberSequenceOrder, 0, textY, textZ, textSize, textRotation, textImprint)
+    diceAlgorithm(diceName, rotations, numberSequenceOrder, 0, textY, textZ, textSize, 0, textImprint)
     
 #############################
 ### ADDITIONAL SHAPE DICE ###
@@ -1091,14 +1101,15 @@ def diceRoundedCubeGenerator(faces, roundVertices, scale, textSize, textImprint)
         numberSequenceOrder = (4, 2, 1, 3)
     #Transformations pre-calculations
     transformationA = (0, math.radians(90), 0)
+    transformationB = (0, 0, math.radians(180))
     #Transformations order
-    rotations = ((transformationA,),)
+    rotations = ((transformationA, transformationB), (transformationB, transformationA),)
     #Rounded cube generation
     generateRoundedCube(diceName, roundVertices)
     #Initialize position, rotation and scale
     solidInitializePosition(diceName, scale)
     #Apply the rotation algorithm
-    diceAlgorithm(diceName, rotations, numberSequenceOrder, 0, 0, scale, textSize, 90, textImprint)
+    diceAlgorithm(diceName, rotations, numberSequenceOrder, 0, scale/3, scale, textSize, 90, textImprint)
     
 #Function: Generate any prismatic dice
 def diceD4PseudoAntirismaticGenerator(lenght, minWidth, maxWidth, scale, textSize, textImprint):
@@ -1168,9 +1179,33 @@ baseRotationsHexahedron = (
     ((0, math.radians(90), math.radians(-90)), ),
     ((math.radians(90), math.radians(180), math.radians(-90)), )
     )
-    
+
+baseRotationsDodecahedron = (
+    ((0, 0, math.radians(36)), (math.radians(63.43), 0, 0)), 
+    ((math.radians(-63.43), 0, 0), (0, 0, math.radians(72)), (math.radians(63.43), 0, 0)), 
+    ((math.radians(-63.43), 0, 0), (0, 0, math.radians(72)), (math.radians(63.43), 0, 0)), 
+    ((math.radians(-63.43), 0, 0), (0, 0, math.radians(72)), (math.radians(63.43), 0, 0)), 
+    ((math.radians(-63.43), 0, 0), (0, 0, math.radians(72)), (math.radians(63.43), 0, 0)), 
+    ((math.radians(-63.43), 0, 0), (0, 0, math.radians(36)), (math.radians(180), 0, 0))
+    )
+  
+"""     
+baseRotationsIcosahedron = (
+    ((0, 0, math.radians(60)), (math.radians(41.81), 0, 0)),
+    ((0, 0, math.radians(60)), (math.radians(41.81), 0, 0)),
+    ((math.radians(-41.81), 0, 0), (0, 0, math.radians(-120)), (math.radians(41.81), 0, 0)),
+    ((math.radians(-41.81), 0, 0), (0, 0, math.radians(60)), (math.radians(-41.81), 0, 0), (0, 0, math.radians(120)), (math.radians(41.81), 0, 0)),
+    ((0, 0, math.radians(60)), (math.radians(41.81), 0, 0)),
+    ((math.radians(-41.81), 0, 0), (0, 0, math.radians(-120)), (math.radians(41.81), 0, 0)),
+    ((math.radians(-41.81), 0, 0), (0, 0, math.radians(60)), (math.radians(-41.81), 0, 0), (0, 0, math.radians(120)), (math.radians(41.81), 0, 0)),
+    ((0, 0, math.radians(60)), (math.radians(41.81), 0, 0)),
+    ((math.radians(-41.81), 0, 0), (0, 0, math.radians(-120)), (math.radians(41.81), 0, 0)),
+    ((math.radians(-41.81), 0, 0), (0, 0, math.radians(60)), (math.radians(-41.81), 0, 0), (0, 0, math.radians(60)), (math.radians(180), 0, 0))
+    )       
+"""
+       
 #Function: Generate a full set of rotation using base and sub rotationnal systems
-def rotationSequenceGeneration(baseRotations, subAngle, faceDivisions):
+def rotationKisSequenceGeneration(baseRotations, subAngle, faceDivisions):
     #Generate the sub-angle transformation for the X-axis
     subRotationXPositive = (math.radians(subAngle), 0, 0)
     subRotationXNegative = (math.radians(subAngle * (-1)), 0, 0)
@@ -1195,10 +1230,9 @@ def rotationSequenceGeneration(baseRotations, subAngle, faceDivisions):
         #Return to a face orientation on the Z axis
         complexSubTransformation += (subRotationXPositive, )
         #Add the complex sub rotation to the sequence
-        transformationsSequence += (complexSubTransformation, )
+        transformationsSequence += (complexSubTransformation, )        
     #Return the transformations
     return transformationsSequence
-    
 
 #Function: Rhombic Dodecahedron Dice 12 Generator
 def dice12RhombicGenerator(scale, textSize, textImprint):
@@ -1213,7 +1247,7 @@ def dice12RhombicGenerator(scale, textSize, textImprint):
     #Initialize position, rotation and scale
     solidInitializePosition(diceName, scale)
     #Generate full rotation sequence from base rotations and sub rotations
-    rotationSequence = rotationSequenceGeneration(baseRotationsTetrahedron, 35.2645, 3)
+    rotationSequence = rotationKisSequenceGeneration(baseRotationsTetrahedron, 35.2645, 3)
     #Rotate the dice for a face orientation toward Z axis for initialization
     bpy.data.objects[diceName].rotation_euler = (0, 0, math.radians(30))
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
@@ -1236,18 +1270,165 @@ def dice24TetrakisGenerator(scale, textSize, textImprint):
     #Initialize position, rotation and scale
     solidInitializePosition(diceName, scale)
     #Generate full rotation sequence from base rotations and sub rotations
-    rotationSequence = rotationSequenceGeneration(baseRotationsHexahedron, -26.56, 4)
+    rotationSequence = rotationKisSequenceGeneration(baseRotationsHexahedron, -26.56, 4)
     #Rotate the dice for a face orientation toward X axis for initialization
     bpy.data.objects[diceName].rotation_euler = (math.radians(-26.56), 0, 0)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
     #Apply the rotation algorithm
     diceAlgorithm(diceName, rotationSequence, numberSequenceOrder, 0, 0, (0.774631 * scale), textSize, 0, textImprint)
+    
+#Function: Rhombic Triacontrahedron Dice 30 Generator
+def dice30RhombicGenerator(scale, textSize, textImprint):
+    #Dice Name
+    diceName = 'D30Rhombic'
+    #Number order
+    numberSequenceOrder = (30, 19, 5, 24, 23, 28, 18, 27, 22, 2, 11, 14, 16, 6, 10, 7, 8, 3, 1, 12, 26, 15, 25, 21, 29, 20, 17, 13, 4, 9)
+    #Generate Rhombic Triacontrahedron
+    bpy.ops.mesh.primitive_solid_add(source='12', vTrunc=1, eTrunc=0, snub='None', dual=True, keepSize=True, preset='dr12')
+    #Rename Solid
+    renameSolid('Solid', diceName)
+    #Initialize position, rotation and scale
+    solidInitializePosition(diceName, scale)
+    #Rotate the dice for a face orientation toward X axis for initialization
+    bpy.data.objects[diceName].rotation_euler = (math.radians(-58.285), 0, math.radians(36))
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    bpy.data.objects[diceName].rotation_euler = (math.radians(63.43 - 31.715), 0, 0)
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    #Subtransformation initialization
+    subTransformationXPositive = (math.radians(31.715), 0, 0)
+    subTransformationXNegative = (math.radians(-31.715), 0, 0)
+    subTransformationZIncrement = (0, 0, math.radians(72))
+    subTransformationZIncrReposition = (0, 0, math.radians(-144))
+    subTransformationZDecrement = (0, 0, math.radians(-72))
+    subTransformationZDecrReposition = (0, 0, math.radians(144))
+    #Dodecahedron-based transformations
+    transformationDodecaInitX = (math.radians(180), 0, math.radians(36))
+    transformationDodecaXPositive = (math.radians(-63.43), 0, 0)
+    transformationDodecaXNegative = (math.radians(63.43), 0, 0)
+    transformationDodecaZ = (0, 0, math.radians(72))
+    #Generation of the rotation sequence
+    rotationSequence = (
+        (subTransformationXPositive, subTransformationZIncrement, subTransformationXNegative),
+        (subTransformationXPositive, subTransformationZIncrement, subTransformationXNegative),
+        (subTransformationXPositive, subTransformationZIncrReposition, transformationDodecaXPositive, 
+            transformationDodecaZ, transformationDodecaXNegative, subTransformationXNegative),
+        (subTransformationXPositive, subTransformationZIncrement, subTransformationXNegative),
+        (subTransformationXPositive, subTransformationZIncrement, subTransformationXNegative),
+        (subTransformationXPositive, subTransformationZIncrReposition, transformationDodecaXPositive, 
+            transformationDodecaZ, transformationDodecaXNegative, subTransformationXNegative),
+        (subTransformationXPositive, subTransformationZIncrement, subTransformationXNegative),
+        (subTransformationXPositive, subTransformationZIncrement, subTransformationXNegative),
+        (subTransformationXPositive, subTransformationZIncrReposition, transformationDodecaXPositive, 
+            transformationDodecaZ, transformationDodecaXNegative, subTransformationXNegative),
+        (subTransformationXPositive, subTransformationZIncrement, subTransformationXNegative),
+        (subTransformationXPositive, subTransformationZIncrement, subTransformationXNegative),
+        (subTransformationXPositive, subTransformationZIncrReposition, transformationDodecaXPositive, 
+            transformationDodecaZ, transformationDodecaXNegative, subTransformationXNegative),
+        (subTransformationXPositive, subTransformationZIncrement, subTransformationXNegative),
+        (subTransformationXPositive, subTransformationZIncrement, subTransformationXNegative),
+        (subTransformationXPositive, subTransformationZIncrReposition, transformationDodecaXPositive,
+            transformationDodecaInitX, transformationDodecaXPositive, subTransformationXPositive),      
+        (subTransformationXNegative, subTransformationZDecrement, subTransformationXPositive),
+        (subTransformationXNegative, subTransformationZDecrement, subTransformationXPositive),
+        (subTransformationXNegative, subTransformationZDecrReposition, transformationDodecaXNegative, 
+            transformationDodecaZ, transformationDodecaXPositive, subTransformationXPositive),    
+        (subTransformationXNegative, subTransformationZDecrement, subTransformationXPositive),
+        (subTransformationXNegative, subTransformationZDecrement, subTransformationXPositive),
+        (subTransformationXNegative, subTransformationZDecrReposition, transformationDodecaXNegative, 
+            transformationDodecaZ, transformationDodecaXPositive, subTransformationXPositive),  
+        (subTransformationXNegative, subTransformationZDecrement, subTransformationXPositive),
+        (subTransformationXNegative, subTransformationZDecrement, subTransformationXPositive),
+        (subTransformationXNegative, subTransformationZDecrReposition, transformationDodecaXNegative, 
+            transformationDodecaZ, transformationDodecaXPositive, subTransformationXPositive),  
+        (subTransformationXNegative, subTransformationZDecrement, subTransformationXPositive),
+        (subTransformationXNegative, subTransformationZDecrement, subTransformationXPositive),
+        (subTransformationXNegative, subTransformationZDecrReposition, transformationDodecaXNegative, 
+            transformationDodecaZ, transformationDodecaXPositive, subTransformationXPositive),  
+        (subTransformationXNegative, subTransformationZDecrement, subTransformationXPositive),
+        (subTransformationXNegative, subTransformationZDecrement, subTransformationXPositive),
+        (subTransformationXNegative, subTransformationZDecrReposition, transformationDodecaXNegative)                                                                                                                             
+    )
+    #Apply the rotation algorithm
+    diceAlgorithm(diceName, rotationSequence, numberSequenceOrder, 0, 0, (0.850651 * scale), textSize, 90, textImprint)    
+    
+#Function: Catalan Pentakis Dodecahedron Dice 60 Generator
+def dice60PentakisGenerator(scale, textSize, textImprint):
+    #Dice Name
+    diceName = 'D60Pentakis'
+    #Number order
+    numberSequenceOrder = diceNumberAlgorithmSequence(60)
+    #Generate Disdyakis Dodecahedron
+    bpy.ops.mesh.primitive_solid_add(source='20', vTrunc=0.666667, eTrunc=0, snub='None', dual=True, keepSize=True, preset='dt20')
+    #Rename Solid
+    renameSolid('Solid', diceName)
+    #Initialize position, rotation and scale
+    solidInitializePosition(diceName, scale)
+    #Rotate the dice for a face orientation toward X axis for initialization
+    bpy.data.objects[diceName].rotation_euler = (math.radians(-58.285 -20.073), 0, 0)
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    #Generate full rotation sequence from base rotations and sub rotations
+    rotationSequence = rotationKisSequenceGeneration(baseRotationsDodecahedron, -20.073, 5)
+    #Apply the rotation algorithm
+    diceAlgorithm(diceName, rotationSequence, numberSequenceOrder, 0, 0, (0.914957 * scale), textSize, 0, textImprint)    
 
+#Function: Catalan Disdyakis Dice 48 Generator
+def dice48DisdyakisDodecahedron(scale, textSize, textImprint):
+    #Dice Name
+    diceName = 'D48Disdyais'
+    #Number order
+    numberSequenceOrder = (1, 48, 42, 7, 19, 30, 36, 13, 25, 24, 31, 18, 12, 37, 43, 6, 15, 34, 28, 21, 3, 46, 40, 9, 
+        22, 27, 33, 16, 10, 39, 45, 4, 2, 47, 41, 8, 20, 29, 35, 14, 23, 26, 32, 17, 11, 38, 44, 5)
+    #diceNumberAlgorithmSequence(24)
+    #Generate Disdyakis Dodecahedron
+    bpy.ops.mesh.primitive_solid_add(source='6', size=1, vTrunc=1.0572, eTrunc=0.585786, snub='None', dual=True, keepSize=True, preset='dc6')
+    #Rename Solid
+    renameSolid('Solid', diceName)
+    #Initialize position, rotation and scale
+    solidInitializePosition(diceName, scale)
+    #Calculate all rotation vectors
+    rotationXPositive = (math.radians(12.45), 0, 0)
+    rotationXNegative = (math.radians(-12.45), 0, 0)
+    rotationXDNegative = (math.radians(-24.9), 0, 0)
+    rotationYPositive = (0, math.radians(32.25), 0)
+    rotationYNegative = (0, math.radians(-32.25), 0)
+    rotationYDNegative = (0, math.radians(-64.5), 0)
+    rotationZAPositive = (0, 0, math.radians(90))
+    rotationZNegative = (0, 0, math.radians(-135))
+    rotationZBPositive = (0, 0, math.radians(45))
+    #Rotate the dice for a face orientation toward X axis for initialization
+    bpy.data.objects[diceName].rotation_euler = rotationZBPositive
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    bpy.data.objects[diceName].rotation_euler = rotationYPositive
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False) 
+    bpy.data.objects[diceName].rotation_euler = rotationXPositive
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)    
+    #Generate full rotation sequence from base rotations and sub rotations
+    rotationSequence = ()
+    subRotations = ()
+    for rotation in baseRotationsHexahedron:
+        rotationSequence += (
+            (rotationXDNegative, ),
+            (rotationXPositive, rotationYDNegative, rotationXPositive),
+            (rotationXDNegative, ),
+            (rotationXPositive, rotationYPositive, rotationZAPositive, rotationYPositive, rotationXPositive),
+            (rotationXDNegative, ),
+            (rotationXPositive, rotationYDNegative, rotationXPositive),
+            (rotationXDNegative, ),
+        )
+        subRotations = (rotationXPositive, rotationYPositive, rotationZNegative)
+        for subR in rotation:
+            subRotations += (subR, )
+        subRotations += (rotationZBPositive, rotationYPositive, rotationXPositive)
+        rotationSequence += (subRotations,)
+    #print(*rotationSequence, sep="\n")
+    #Apply the rotation algorithm
+    diceAlgorithm(diceName, rotationSequence, numberSequenceOrder, 0, 0, (0.902 * scale), textSize, 0, textImprint)      
+    
 ###############################
 ### INITIALIZATION FUNCTION ###
 ###############################
 
-#Function : Initialize Blender scene
+#Function: Initialize Blender scene
 def initializeBlenderSceneObjects():
     #Delete all meshes from Blender Scene
     for object in bpy.data.objects:
@@ -1266,7 +1447,8 @@ def main():
     #Initialize the scene by deleting everything on the scene
     initializeBlenderSceneObjects()
     #Generate all numbers
-    generateAllNumbersMeshes()
+    generateAllNumbersMeshes(100)
+
     #Dice modifiers parameters
     meshBevelGlobalParameters(False, 15, 10, False)
     #Dice Generation Sequence
@@ -1278,15 +1460,15 @@ def main():
     dice12Generator(12, 10, 0.5)
     dice20Generator(14, 7, 0.5)
     #Even-faces prism dice
-    diceEvenPrismaticGenerator(4, 0.75, 2, 0.75, 8, 12, 0.5)
-    diceEvenPrismaticGenerator(6, 0.75, 2, 0.75, 8, 9, 0.5)  
+    diceEvenPrismaticGenerator(4, 1, 2, 0.75, 8, 12, 0.5)
+    diceEvenPrismaticGenerator(6, 1, 2, 0.75, 8, 9, 0.5)  
     diceEvenPrismaticGenerator(8, 1, 2, 0.75, 8, 8, 0.5) 
     diceEvenPrismaticGenerator(10, 1.25, 2, 0.75, 8, 8, 0.5)
     #Odd-faces prism dice
-    diceOddPrismaticGenerator(3, 1, 1.25, 0.75, 8, 7, 0.5) 
-    diceOddPrismaticGenerator(5, 1.25, 1.5, 1, 8, 6, 0.5)
-    diceOddPrismaticGenerator(7, 1.5, 1.5, 1.25, 8, 6, 0.5)
-    diceOddPrismaticGenerator(9, 2.5, 2.5, 1.5, 8, 6, 0.5)
+    diceOddPrismaticGenerator(3, 1, 1.75, 0.5, 8, 7, 0.5) 
+    diceOddPrismaticGenerator(5, 1.25, 1.75, 0.5, 8, 6, 0.5)
+    diceOddPrismaticGenerator(7, 1.5, 2, 0.5, 8, 6, 0.5)
+    diceOddPrismaticGenerator(9, 2, 2.5, 1, 8, 5, 0.5)
     #Antiprism dices
     diceAntirismaticGenerator(6, 0.9, 2.25, 0.75, 9, 9, 0.5)
     diceAntirismaticGenerator(8, 0.9, 2.25, 0.75, 9, 9, 0.5)
@@ -1297,22 +1479,25 @@ def main():
     diceAntirismaticGenerator(18, 1.33, 2.75, 0.5, 9, 7, 0.5) 
     diceAntirismaticGenerator(20, 1.5, 3, 0.5, 9, 6, 0.5) 
     #Bipyramidal dices --D8 and 10 not generated : looks a lot like Platonic
-    diceBipyramidGenerator(6, 2, 2.25, 10, 8, 0.5)
-    diceBipyramidGenerator(12, 2.25, 2.25, 10, 6, 0.5)
-    diceBipyramidGenerator(14, 2.5, 2.25, 10, 6, 0.5)
-    diceBipyramidGenerator(16, 2.5, 2.5, 10, 6, 0.5)
-    diceBipyramidGenerator(18, 2.75, 2.5, 10, 6, 0.5)
-    diceBipyramidGenerator(20, 2.75, 2.5, 10, 6, 0.5)
+    diceBipyramidGenerator(6, 2.25, 2.25, 13, 12, 0.5)
+    diceBipyramidGenerator(12, 2, 2, 13, 8, 0.5)
+    diceBipyramidGenerator(14, 2.2, 2, 13, 8, 0.5)
+    diceBipyramidGenerator(16, 2.4, 2, 13, 8, 0.5)
+    diceBipyramidGenerator(18, 2.6, 2, 13, 8, 0.5)
+    diceBipyramidGenerator(20, 2.8, 2, 13, 7, 0.5)
     #Rounded-dice
-    diceRoundedCubeGenerator(2, 64, 8, 14, 0.5)
-    diceRoundedCubeGenerator(4, 64, 8, 14, 0.5)
+    diceRoundedCubeGenerator(2, 64, 7, 10, 0.5)
+    diceRoundedCubeGenerator(4, 64, 7, 10, 0.5)
     #Pseudo antiprism
     diceD4PseudoAntirismaticGenerator(2.5, 0.3, 1.5, 10, 13, 0.5)
     #Rhombic dice
     dice12RhombicGenerator(12, 9, 0.5)
     #Catalan dice
     dice24TetrakisGenerator(15, 6, 0.5)
-    
+    dice30RhombicGenerator(15, 6, 0.5)
+    dice60PentakisGenerator(20, 6, 0.5)
+    dice48DisdyakisDodecahedron(20, 6, 0.5)
+
     #Delete all numbers
     clearAllNumbersMeshes()    
     
