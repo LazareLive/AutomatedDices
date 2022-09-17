@@ -1,4 +1,4 @@
-# AutomatedDices v0.7.1
+# AutomatedDices v0.7.2
 A small python script to automate 3D models for dices<br/>
 Made by Lazare from July 2022<br/>
 Based on "Design Your Own Custom Dice for Free | Blender Tutorial | DIY with Cly Ep. 21" by Cly Faker<br/>
@@ -11,8 +11,8 @@ https://www.youtube.com/watch?v=nCowrvfOr3Q<br/>
   <li>Prismatic dice : Odd and even dice</li>
   <li>Antiprismatic dice : Even dice</li>
   <li>Bipyramidal dice : Even dice</li>
-  <li>Rhombic-shaped polyhedrons : D12</li>
-  <li>Kiscube D24</li>
+  <li>Rhombic-shaped polyhedrons : D12 & D30</li>
+  <li>Kiscube D24, D48, D60</li>
   <li>Pseudo antiprism D4</li>
   <li>D2 and D4 rounded dice</li>
 </ul>
@@ -31,12 +31,10 @@ https://www.youtube.com/watch?v=nCowrvfOr3Q<br/>
 <ul>
   <li>New shapes</li>
   <ul>
-    <li>Rhombic-shaped polyhedrons : D30...</li>
-    <li>D48, D60, D120</li>
+    <li>D120</li>
     <li>Pyramidal polyhedrons (Shard dice)</li>
     <li>Odd bipyramidal dice</li>
     <li>Star-prism odd-faced polyhedrons</li>
-    <li>Catalan and Archimedes polyhedrons</li>
     <li>Icosphere polyhedrons</li>
     <li>UV-sphere n-sided dice</li>
   </ul>
