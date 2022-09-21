@@ -15,6 +15,7 @@ https://www.youtube.com/watch?v=nCowrvfOr3Q<br/>
   <li>Kiscube D24, D48, D60</li>
   <li>Pseudo antiprism D4</li>
   <li>D2 and D4 rounded dice</li>
+  <li>Pyramidal polyhedrons (Shard dice)</li>
 </ul>
 <b>All these dice are exported in STL format</b>
 <h3>Transformations</h3>
@@ -25,6 +26,7 @@ https://www.youtube.com/watch?v=nCowrvfOr3Q<br/>
   <li>Text font selection</li>
   <li>Texts automatically centered using "0" as reference point</li>
   <li>Text sizing and imprint depth parametrable for all dice</li>
+  <li>6 and 9 distinction sign can be underdot, underscore and dotted number</li>
   <li>Mesh alteration (Bevel)</li>
 </ul>
 
@@ -33,14 +35,11 @@ https://www.youtube.com/watch?v=nCowrvfOr3Q<br/>
   <li>New shapes</li>
   <ul>
     <li>D120</li>
-    <li>Pyramidal polyhedrons (Shard dice)</li>
-    <li>Odd bipyramidal dice</li>
     <li>Star-prism odd-faced polyhedrons</li>
     <li>Icosphere polyhedrons</li>
     <li>UV-sphere n-sided dice</li>
   </ul>
   <li>Change dice minimum or maximum value with a logo</li>
-  <li>Change dotted 6 or 9 with an underscore</li>
   <li>New alteration on the dice</li>
   <li>Mesh optimizations</li>
 </ul>
