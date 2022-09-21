@@ -16,30 +16,36 @@
 #Text size and imprint are parametered
 #Number sequence is automatically generated on n-sided dice
 #Mesh alteration is global for all asked dice to be generated
+#Change dot method for 6 & 9
+#Extruded pyramid dices (shard dice)
 
 #--- TO DO LIST ---
 #Do D120
 #Do Icosphere dice
 #Do UVsphere dice
-#Change dot method for 6 & 9
 #Do imprinted odd prismatic dice
-#Do extruded pyramid dices (shard dice)
 
 #Import Blender librairies
 import bpy, mathutils
 #Import additionnal math library
-import math
+import math, os
 
 #Global variables
-_fontFile = "C:\\Windows\\Fonts\\CantaraGotica.ttf"
+_fontSource = "CantaraGotica.ttf"
+_dotSign = "."
+_dotYPosition = -0.225
 
 #Internal global variables
+_mainPath = os.path.dirname(bpy.data.filepath)
+_exportPath = _mainPath + "\\export\\"
+_fontFile = _mainPath + "\\fonts\\" + _fontSource
 _fontOpen = bpy.data.fonts.load(_fontFile)
-_numName = '_Num'
-_numbers = []
-_dotYPosition = -0.25
-_diceList = []
+
+_numName = '_Text'
 _numSize = 0.0
+
+_numbers = []
+_diceList = []
 
 #Global bevel modification parameters
 _bevelMethodActivation = False
@@ -50,6 +56,15 @@ _bevelMethodIsVertice = True
 ######################################
 ### TEXT/NUMBERS-RELATED FUNCTIONS ###
 ######################################
+
+#Function: Set dot sign
+def setDotSign(dot = ""):
+    global _dotSign
+    #Only 3 methods authorized : Bottom dot, Bottom underscore and dotted number
+    if ((dot == "") or (dot == ".") or (dot == "_")):
+        _dotSign = dot
+    else:
+        _dotSign = "."
 
 #Function: Number Creator
 def numberMeshCreator(stringText, locY=None):
@@ -98,12 +113,18 @@ def numberMeshCreator(stringText, locY=None):
 #Function: Creation of all Numbers
 def generateAllNumbersMeshes(maxNumber = 100):
     #Get the global numbers generated variable
-    global _numbers
+    global _numbers 
     #Initialize _numbers array
-    _numbers.append('.')
     for num in range(maxNumber):
         _numbers.append(str(num + 1))
     _numbers.append('00')
+    #Generate the dot sign
+    if (_dotSign != ''):
+        _numbers.append(_dotSign)
+    else:
+        #If method is empty, generate 6. and 9. signs
+        _numbers.append('6.')
+        _numbers.append('9.')    
     #Generate number 0, and find the center of the number. The Y localisation for 0 determine the all set of meshes center
     locY = numberMeshCreator('0')
     #For each number on the list, create them
@@ -211,7 +232,7 @@ def generateBipyramidalSolid(diceName, vert, rad, dep):
     bpy.ops.object.mode_set(mode = 'EDIT')
     bpy.ops.mesh.select_mode(type = 'FACE')
     bpy.ops.mesh.select_all(action = 'SELECT')
-    bpy.ops.mesh.remove_doubles() 
+    bpy.ops.mesh.remove_doubles()
     bpy.ops.object.mode_set(mode = 'OBJECT')
     #Select the Bipyramidal dice
     bpy.data.objects[diceName].select_set(True)
@@ -431,6 +452,34 @@ def generateRoundedCube(diceName, cylinderVertices):
     bpy.data.objects[diceName].location = (0, 0, 0)
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     
+#Function: Generate a shard n-gone trapezoidal dice with any number of faces
+def generateShardSolid(diceName, vert, rad, depSize, depRatioTop = 0.5):
+    #Check the depRaioTop value
+    depRatioTop = max(min(1.0, depRatioTop), 0.0)
+    #Generate a standard bipyramid solid
+    generateBipyramidalSolid(diceName, vert, rad, depSize)
+    #Enter Edit Mode
+    bpy.ops.object.mode_set(mode = 'EDIT')
+    bpy.ops.mesh.select_mode(type = 'VERT')
+    #Select all the solid to generate new triangular faces
+    bpy.ops.mesh.select_all(action = 'SELECT')
+    bpy.ops.mesh.quads_convert_to_tris(quad_method='BEAUTY', ngon_method='BEAUTY')
+    #Deselect all the vertices
+    bpy.ops.mesh.select_all(action = 'DESELECT')
+    bpy.ops.object.mode_set(mode = 'OBJECT')
+    #Select the top vertex only
+    vertexZ = 0
+    vertexIndex = 0
+    #Scan all vertices from the polyhedron
+    for vertex in bpy.context.active_object.data.vertices:
+        if (vertex.co.z > vertexZ):
+            vertexZ = vertex.co.z
+            vertexIndex = vertex.index
+    #Modify the shard upper vertex
+    bpy.context.active_object.data.vertices[vertexIndex].co.z = depRatioTop * depSize * (0.5)
+    #Select the shard dice
+    bpy.data.objects[diceName].select_set(True) 
+    
 ###########################
 ### MESH TRANSFORMATION ###
 ###########################
@@ -640,11 +689,15 @@ def diceAlgorithm(diceName, rotationSequence, numberSequenceOrder, textPosX, tex
         #Trigonometry has to be used to calculate the dot position
         ratioX = math.sin(math.radians(textRotation * -1))
         ratioY = math.cos(math.radians(textRotation * -1))
-        transformNumberMeshes('.', textScale, textPosX + (_dotYPosition * textScale * ratioX), textPosY + (_dotYPosition * textScale * ratioY), textPosZ, textRotation, textImprint)
+        if (_dotSign != ''):
+            transformNumberMeshes(_dotSign, textScale, textPosX + (_dotYPosition * textScale * ratioX), textPosY + (_dotYPosition * textScale * ratioY), textPosZ, textRotation, textImprint)
     #Rotation & Boolean operation between Dice and Number for all faces
     for i in range(faces):
         #Create the number object name
         numberOjectName = str(numberSequenceOrder[i])
+        #Generate the 6 or 9 method for _dotSign specificatins
+        if ((_dotSign == '') and ((numberSequenceOrder[i] == 6) or (numberSequenceOrder[i] == 9)) and (not isPercentile)):
+            numberOjectName += '.'
         #If it is a percentile dice, add a 0 to the name
         if(isPercentile):
             numberOjectName = numberOjectName + '0'
@@ -653,8 +706,8 @@ def diceAlgorithm(diceName, rotationSequence, numberSequenceOrder, textPosX, tex
         #Apply boolean operation on dice
         booleanOperationOnObject(diceName, _numName + numberOjectName)
         #If there is a 6 or a 9 face, apply the dot/underscore on the bottom
-        if((maxNumber > 8) and (isPercentile == False) and ((numberSequenceOrder[i] == 6) or (numberSequenceOrder[i] == 9))):
-            booleanOperationOnObject(diceName, _numName + '.')
+        if((maxNumber > 8) and (isPercentile == False) and ((numberSequenceOrder[i] == 6) or (numberSequenceOrder[i] == 9)) and (_dotSign != '')):
+            booleanOperationOnObject(diceName, _numName + _dotSign)
         #Sequence the rotations and boolean for half a dice
         for sequence in rotationSequence[(i % len(rotationSequence))]:
             bpy.data.objects[diceName].rotation_euler = sequence
@@ -1083,6 +1136,75 @@ def diceBipyramidGenerator(faces, radius, depth, scale, textSize, textImprint):
     #Apply the rotation algorithm
     diceAlgorithm(diceName, rotations, numberSequenceOrder, 0, textY, textZ, textSize, 0, textImprint)
     
+#Function: Generate any bipyramidal dice
+def diceShardGenerator(faces, radius, depth, depthTopRaio, scale, textSize, textImprint):
+    #Dice Name
+    diceName = 'D' + str(faces) + 'Shard'
+    #Generate the number sequence
+    numberSequenceOrder = diceNumberAlgorithmSequence(faces)
+    #Generate the bipyramidal solid base
+    generateShardSolid(diceName, faces, radius, depth, depthTopRaio)
+    #Initialize position, rotation and scale
+    solidInitializePosition(diceName, scale)
+    #Get the top dice height
+    height = depth * depthTopRaio * scale * 0.5
+    #Transform the dice rotation to have a face plane on Y
+    if (isEven(faces)):
+        bpy.data.objects[diceName].rotation_euler = (0, 0, math.radians(180.0 / faces))
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    #Get the polygon facing Y after rotation
+    for polygon in bpy.data.objects[diceName].data.polygons:
+        if(abs(polygon.normal.x) < 0.01):
+            break
+    #From that polygon, get all the vertices composing the polygon
+    for v in polygon.vertices:
+        vertex = bpy.data.objects[diceName].data.vertices[v]
+        #If the polygon formed by the section of the bipyramid is even based
+        if (isEven(faces)):
+            #Polygon has 3 vertices, get one point where z=0 and return position
+            if(abs(vertex.co.z) < 0.01):
+                break
+        #If the polygon formed by the section of the bipyramid is oddd based
+        else:
+            #Polygon has 4 vertices, generating a "kite" polygon
+            #Get one of the lateral point where x=0 and is not the top of the polygon
+            if(abs(vertex.co.z) < height):
+                break
+    #From the vertex selected, generate a rectangular triangle to calculate the angle of transformation
+    width = abs(vertex.co.y)
+    height = height - abs(vertex.co.z)
+    #Get the dice rotation to be applied
+    angle = math.atan(width/height) - math.radians(90)
+    #Rotation calculations
+    transformationXNeg = (angle, 0, 0)
+    transformationXPos = (angle * (-1), 0, 0)
+    transformationZ = (0, 0, math.radians(360.0 / faces))
+    #Generate automatic rotations
+    rotations = ()
+    for i in range(faces):
+        rotations = rotations + ((transformationXPos, transformationZ, transformationXNeg),)
+    #rotations = rotations + ((transformationXPos, transformationZ, transformationXNeg, (math.radians(180), 0, 0)),)
+    #Rotate the dice, one more, to have a face facing Z axis
+    bpy.data.objects[diceName].rotation_euler = transformationXNeg
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    #Get the Y-text position from the shape of the upper face
+    upperY = 0
+    lowerY = 0
+    #Retrieve upper and lower Y limits of the polygon
+    for polygon in bpy.data.objects[diceName].data.polygons:
+        if(polygon.normal.z > 0.99):
+            break
+    for v in polygon.vertices:
+        vertex = bpy.data.objects[diceName].data.vertices[v]
+        upperY = max(upperY, vertex.co.y)
+        lowerY = min(lowerY, vertex.co.y)
+    #Calculate the text Y position on the solid
+    textY = lowerY + ((upperY - lowerY) / 3)
+    #Get the Z-text position
+    textZ = abs(vertex.co.z)
+    #Apply the rotation algorithm
+    diceAlgorithm(diceName, rotations, numberSequenceOrder, 0, textY, textZ, textSize, 0, textImprint)
+    
 #############################
 ### ADDITIONAL SHAPE DICE ###
 #############################
@@ -1188,21 +1310,6 @@ baseRotationsDodecahedron = (
     ((math.radians(-63.43), 0, 0), (0, 0, math.radians(72)), (math.radians(63.43), 0, 0)), 
     ((math.radians(-63.43), 0, 0), (0, 0, math.radians(36)), (math.radians(180), 0, 0))
     )
-  
-"""     
-baseRotationsIcosahedron = (
-    ((0, 0, math.radians(60)), (math.radians(41.81), 0, 0)),
-    ((0, 0, math.radians(60)), (math.radians(41.81), 0, 0)),
-    ((math.radians(-41.81), 0, 0), (0, 0, math.radians(-120)), (math.radians(41.81), 0, 0)),
-    ((math.radians(-41.81), 0, 0), (0, 0, math.radians(60)), (math.radians(-41.81), 0, 0), (0, 0, math.radians(120)), (math.radians(41.81), 0, 0)),
-    ((0, 0, math.radians(60)), (math.radians(41.81), 0, 0)),
-    ((math.radians(-41.81), 0, 0), (0, 0, math.radians(-120)), (math.radians(41.81), 0, 0)),
-    ((math.radians(-41.81), 0, 0), (0, 0, math.radians(60)), (math.radians(-41.81), 0, 0), (0, 0, math.radians(120)), (math.radians(41.81), 0, 0)),
-    ((0, 0, math.radians(60)), (math.radians(41.81), 0, 0)),
-    ((math.radians(-41.81), 0, 0), (0, 0, math.radians(-120)), (math.radians(41.81), 0, 0)),
-    ((math.radians(-41.81), 0, 0), (0, 0, math.radians(60)), (math.radians(-41.81), 0, 0), (0, 0, math.radians(60)), (math.radians(180), 0, 0))
-    )       
-"""
        
 #Function: Generate a full set of rotation using base and sub rotationnal systems
 def rotationKisSequenceGeneration(baseRotations, subAngle, faceDivisions):
@@ -1424,6 +1531,24 @@ def dice48DisdyakisDodecahedron(scale, textSize, textImprint):
     #Apply the rotation algorithm
     diceAlgorithm(diceName, rotationSequence, numberSequenceOrder, 0, 0, (0.902 * scale), textSize, 0, textImprint)      
     
+#######################
+### EXPORT FUNCTION ###
+#######################
+
+#Function: Export all dice to STL format
+def exportDiceToSTLFile():
+    #Deselect all objects on the scene
+    bpy.ops.object.select_all(action='DESELECT')
+    #For each dice in _diceList
+    for dName in _diceList:
+        dice = bpy.data.objects[dName]
+        dice.hide_set(False)
+        dice.select_set(True)
+        stlPath = _exportPath + dName + ".stl"
+        bpy.ops.export_mesh.stl(filepath=stlPath, use_selection=True, check_existing =False)
+        dice.select_set(False)    
+        dice.hide_set(True)
+
 ###############################
 ### INITIALIZATION FUNCTION ###
 ###############################
@@ -1446,11 +1571,13 @@ def main():
     
     #Initialize the scene by deleting everything on the scene
     initializeBlenderSceneObjects()
+    #Set the dotted 6 and 9 method
+    setDotSign(".")
     #Generate all numbers
     generateAllNumbersMeshes(100)
-
     #Dice modifiers parameters
     meshBevelGlobalParameters(False, 15, 10, False)
+    
     #Dice Generation Sequence
     dice4Generator(15, 10, 0.5)
     dice6Generator(8, 16, 0.5)
@@ -1497,9 +1624,19 @@ def main():
     dice30RhombicGenerator(15, 6, 0.5)
     dice60PentakisGenerator(20, 6, 0.5)
     dice48DisdyakisDodecahedron(20, 6, 0.5)
-
+    #Shard Dice
+    diceShardGenerator(4, 1.0, 2.5, 0.6, 15, 8, 0.5)    
+    diceShardGenerator(5, 1.1, 2.5, 0.6, 15, 7, 0.5)
+    diceShardGenerator(6, 1.2, 2.5, 0.6, 15, 7, 0.5)
+    diceShardGenerator(7, 1.3, 2.5, 0.6, 15, 7, 0.5)
+    diceShardGenerator(8, 1.4, 2.5, 0.6, 15, 7, 0.5)
+    diceShardGenerator(9, 1.5, 2.5, 0.6, 15, 7, 0.5)   
+    
     #Delete all numbers
-    clearAllNumbersMeshes()    
+    clearAllNumbersMeshes()  
+    
+    #Export to STL
+    exportDiceToSTLFile()
     
     #Replace all dices of a better view
     #repositionAllDicesOnPlane() 
