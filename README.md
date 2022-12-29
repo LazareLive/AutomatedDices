@@ -1,4 +1,4 @@
-# AutomatedDices v0.8.1
+# AutomatedDices v0.8.2
 A small python script to automate 3D models for dices<br/>
 Made by Lazare from July 2022<br/>
 Based on "Design Your Own Custom Dice for Free | Blender Tutorial | DIY with Cly Ep. 21" by Cly Faker<br/>
@@ -32,9 +32,8 @@ https://www.youtube.com/watch?v=nCowrvfOr3Q<br/>
 
 <h2>To do list</h2>
 <ul>
-  <li>UV-sphere n-sided dice</li>
   <li>Change dice minimum or maximum value with a logo</li>
 </ul>
 
-Documentation will be done later-on, when passing to v1.0
+Documentation IS DONE !!! =)
 User-interface is not planned yet
