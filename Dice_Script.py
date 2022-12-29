@@ -3,6 +3,10 @@
 #Based on "Design Your Own Custom Dice for Free | Blender Tutorial | DIY with Cly Ep. 21" by Cly Faker
 #https://www.youtube.com/watch?v=nCowrvfOr3Q
 
+#--- BEFORE RUNNING THE SCRIPT ---
+#On Blender, go to Edit > Preferences > Add-on
+#Type "Extra" on the research tool, and check "Add Mesh : Extra Objects"
+
 #--- DONE ---
 #Classic dices D4, D6, D8, D10, D%, D12 and D20
 #Prism, Antiprism and Bipyramid n-sided dice
@@ -20,10 +24,7 @@
 #Extruded pyramid dices (shard dice)
 
 #--- TO DO LIST ---
-#Do D120
-#Do Icosphere dice
 #Do UVsphere dice
-#Do imprinted odd prismatic dice
 
 #Import Blender librairies
 import bpy, mathutils
@@ -31,16 +32,17 @@ import bpy, mathutils
 import math, os
 
 #Global variables
-_fontSource = "DalekPinpointBold.ttf"
-_dotSign = "."
-_dotYPosition = -0.05
-_textSizeModifier = 1
+_fontSource = "Gelio Fasolada.ttf"
 
 #Internal global variables
 _mainPath = os.path.dirname(bpy.data.filepath)
 _exportPath = _mainPath + "\\export\\"
 _fontFile = _mainPath + "\\fonts\\" + _fontSource
 _fontOpen = bpy.data.fonts.load(_fontFile)
+
+_dotSign = "."
+_dotYPosition = -0.05
+_textSizeModifier = 1
 
 _numName = '_Text'
 _numSize = 0.0
@@ -1002,7 +1004,7 @@ def diceOddPrismaticGenerator(faces, radius, depth, extrude, scale, textSize, te
     diceAlgorithm(diceName, rotations, numberSequenceOrder, textX, 0, textZ, textSize, -90, textImprint)
     
 #Function: Generate any prismatic dice
-def diceAntirismaticGenerator(faces, radius, depth, extrude, scale, textSize, textImprint):
+def diceAntiprismaticGenerator(faces, radius, depth, extrude, scale, textSize, textImprint):
     #Antiprismatic dice are only even, and start with a 6-face dice
     if (((faces % 2) == 1) and (faces < 6)):
         return
@@ -1225,7 +1227,7 @@ def diceRoundedCubeGenerator(faces, roundVertices, scale, textSize, textImprint)
     diceAlgorithm(diceName, rotations, numberSequenceOrder, 0, scale/3, scale, textSize, 90, textImprint)
     
 #Function: Generate any prismatic dice
-def diceD4PseudoAntirismaticGenerator(lenght, minWidth, maxWidth, scale, textSize, textImprint):
+def dice4PseudoAntiprismaticGenerator(lenght, minWidth, maxWidth, scale, textSize, textImprint):
     #Dice Name
     diceName = 'D4PseudoAntiprism'
     #Generate the number sequence
@@ -1576,14 +1578,14 @@ def main():
     #Set the dotted 6 and 9 method
     setDotSign("_")
     #Set the underscore/dot and text resizer
-    setFontParameters(-0.05, 1.15)
+    setFontParameters(-0.05, 0.8)
     #Generate all numbers
     generateAllNumbersMeshes(100)
     #Dice modifiers parameters
-    meshBevelGlobalParameters(False, 15, 10, False)
+    meshBevelGlobalParameters(False, 5, 16, True)
     
     #Dice Generation Sequence
-    dice4Generator(15, 10, 0.5)
+    dice4Generator(15, 8, 0.5)
     dice6Generator(8, 16, 0.5)
     dice8Generator(15, 13, 0.5)
     dice10UnitGenerator(13, 12, 0.5)
@@ -1602,19 +1604,19 @@ def main():
     diceOddPrismaticGenerator(3, 1.25, 2, 0.5, 8, 8, 0.5)
     """
     #These are ugly, but still exists
-    diceOddPrismaticGenerator(5, 1.25, 1.75, 0.5, 8, 6 * _textSizeModifier, 0.5)
-    diceOddPrismaticGenerator(7, 1.5, 2, 0.5, 8, 6 * _textSizeModifier, 0.5)
-    diceOddPrismaticGenerator(9, 2, 2.5, 1, 8, 5 * _textSizeModifier, 0.5)
+    diceOddPrismaticGenerator(5, 1.25, 1.75, 0.5, 8, 6, 0.5)
+    diceOddPrismaticGenerator(7, 1.5, 2, 0.5, 8, 6, 0.5)
+    diceOddPrismaticGenerator(9, 2, 2.5, 1, 8, 5, 0.5)
     """
     #Antiprism dices
-    diceAntirismaticGenerator(6, 0.9, 2.25, 0.75, 9, 9, 0.5)
-    diceAntirismaticGenerator(8, 0.9, 2.25, 0.75, 9, 9, 0.5)
-    diceAntirismaticGenerator(10, 1, 2.25, 0.75, 9, 8, 0.5) 
-    diceAntirismaticGenerator(12, 1, 2.25, 0.5, 9, 7, 0.5)
-    diceAntirismaticGenerator(14, 1.25, 2.5, 0.5, 9, 7, 0.5) 
-    diceAntirismaticGenerator(16, 1.25, 2.5, 0.5, 9, 7, 0.5) 
-    diceAntirismaticGenerator(18, 1.33, 2.75, 0.5, 9, 7, 0.5) 
-    diceAntirismaticGenerator(20, 1.5, 3, 0.5, 9, 6, 0.5) 
+    diceAntiprismaticGenerator(6, 0.9, 2.25, 0.75, 9, 9, 0.5)
+    diceAntiprismaticGenerator(8, 0.9, 2.25, 0.75, 9, 9, 0.5)
+    diceAntiprismaticGenerator(10, 1, 2.25, 0.75, 9, 8, 0.5) 
+    diceAntiprismaticGenerator(12, 1, 2.25, 0.5, 9, 7, 0.5)
+    diceAntiprismaticGenerator(14, 1.25, 2.5, 0.5, 9, 7, 0.5) 
+    diceAntiprismaticGenerator(16, 1.25, 2.5, 0.5, 9, 7, 0.5) 
+    diceAntiprismaticGenerator(18, 1.33, 2.75, 0.5, 9, 7, 0.5) 
+    diceAntiprismaticGenerator(20, 1.5, 3, 0.5, 9, 6, 0.5) 
     #Bipyramidal dices --D8 and 10 not generated : looks a lot like Platonic
     diceBipyramidGenerator(6, 2.25, 2.25, 13, 12, 0.5)
     diceBipyramidGenerator(12, 2, 2.1, 13, 8, 0.5)
@@ -1626,7 +1628,7 @@ def main():
     diceRoundedCubeGenerator(2, 64, 7, 13, 0.5)
     diceRoundedCubeGenerator(4, 64, 7, 13, 0.5)
     #Pseudo antiprism
-    diceD4PseudoAntirismaticGenerator(2.5, 0.3, 1.5, 10, 13, 0.5)
+    dice4PseudoAntiprismaticGenerator(2.5, 0.3, 1.5, 10, 13, 0.5)
     #Rhombic dice
     dice12RhombicGenerator(12, 9, 0.5)
     #Catalan dice
