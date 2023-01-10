@@ -1,4 +1,4 @@
-# AutomatedDices v0.8.1
+# AutomatedDices v1.0
 A small python script to automate 3D models for dices<br/>
 Made by Lazare from July 2022<br/>
 Based on "Design Your Own Custom Dice for Free | Blender Tutorial | DIY with Cly Ep. 21" by Cly Faker<br/>
@@ -28,11 +28,7 @@ https://www.youtube.com/watch?v=nCowrvfOr3Q<br/>
   <li>Text sizing and imprint depth parametrable for all dice</li>
   <li>6 and 9 distinction sign can be underdot, underscore and dotted number</li>
   <li>Mesh alteration (Bevel)</li>
-</ul>
-
-<h2>To do list</h2>
-<ul>
-  <li>Change dice minimum or maximum value with a logo</li>
+  <li>Change dice number value with a logo</li>
 </ul>
 
 Documentation IS DONE !!! =)
